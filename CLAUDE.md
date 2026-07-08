@@ -45,8 +45,8 @@ Small, layered engine. Data flows: raw text → `Board` + command list → `Game
 - **`pieces.py`** — `Piece` base class plus one subclass per piece type. The only per-piece logic is `is_valid_move(from_row, from_col, to_row, to_col, board)`, which encodes *shape* rules only; sliding pieces (Rook/Bishop/Queen) call the shared `_is_path_clear` helper to reject blocked paths. `EmptyCell` is a `Piece` subclass (Null Object) so the grid is never `None` and callers never special-case empties.
 - **`registry.py`** — `create_piece_from_token` is a factory mapping a token to a piece instance via the `PIECE_CLASSES` dict. **This is the extension point for new piece types** (per the spec's "easy to add a piece" design goal): add the class in `pieces.py` and one entry here — no changes to parsing or the engine.
 - **`board.py`** — `Board` owns the `grid` (list-of-lists of `Piece`) and `selected_piece`. All access goes through `get_cell`/`is_empty`/`get_piece_color`, which are bounds-safe (out-of-bounds reads return an `EmptyCell`, not an error).
-- **`engine.py`** — `GameEngine.execute_command` dispatches `click x y`, `wait <ms>`, and `print board`. A click with no selection selects a non-empty cell; a second click either switches selection (same color), moves/captures (valid move, enemy or empty target), or deselects (illegal move).
-- **`config.py`** — shared constants: `CELL_SIZE` (100), color strings `"WHITE"`/`"BLACK"`, `EMPTY_TOKEN`.
+- **`engine.py`** — `GameEngine.execute_command` dispatches `click x y`, `wait <ms>`, and `print board`. A click with no selection selects a non-empty cell; a second click either switches selection (same color), moves/captures (valid move, enemy or empty target), or deselects (illegal move). **Moves take travel time** (movement over time): a valid move is not applied instantly — it becomes a `PendingMove` with `arrival_ms = game_clock_ms + cells_traveled * config.MS_PER_CELL` (cells = Chebyshev distance). The piece stays in its **origin** cell (so `print board` shows it there) until `wait` advances `game_clock_ms` to/past `arrival_ms`, at which point `_resolve_arrived_moves` performs the actual `board.move_piece` (including capture). Only `wait` resolves pending moves, so a move never completes without a sufficient `wait`.
+- **`config.py`** — shared constants: `CELL_SIZE` (100), `MS_PER_CELL` (1000, travel time per cell), color strings `"WHITE"`/`"BLACK"`, `EMPTY_TOKEN`.
 - **`main.py`** — `parse_input` + `main(input_stream=None)`; `input_stream` defaults to `sys.stdin` and is injectable for tests.
 
 ### Conventions that bite
@@ -58,3 +58,36 @@ Small, layered engine. Data flows: raw text → `Board` + command list → `Game
 ## Project context
 
 `kong_fu_chess_requirements.md` is the full product spec (Hebrew): Kung-Fu-Chess is meant to be a **real-time, no-turns** game where moves take physical travel time, pieces have a post-move cooldown, and you win only by actually capturing the enemy king (no check/checkmate). **The current code is an early, simplified move engine** — click-to-select/move with instant moves, no timing, cooldown, scoring, or networking yet. When extending, honor the spec's stated design principle: make the *known* future extensions (new piece types, new commands, animations) easy, but do **not** add speculative abstractions for things not yet needed. The registry-factory piece model is the concrete expression of that principle.
+
+## Architecture Principles - Extensibility (must respect, do NOT implement yet)
+
+1. **Future binary representation of board/pieces**: Currently represented as text, 
+   but in the future a move to binary representation will be required to save memory.
+   - Do NOT implement this now.
+   - Mandatory: all access to the board/pieces must go through an abstraction layer 
+     (interface/abstract class) — never touch the internal data structure directly.
+   - When working on new code that touches the board/pieces, always ask: 
+     "If the internal representation switches to binary tomorrow, will this code still work?"
+
+2. **User-defined games (custom rules engine)**: In the future, users will define 
+   custom movement rules for each piece (including non-standard behavior — 
+   e.g. a pawn reversing direction instead of promoting).
+   - Do NOT implement this now.
+   - Mandatory: no hard-coding of movement rules inside game/piece logic. 
+     Every movement rule must be swappable/externally definable 
+     (strategy pattern / config-driven rules), not embedded if/else logic.
+   - Before implementing movement logic for a piece, check: "Could this be 
+     replaced with a completely different rule without touching this code?"
+
+## Clean Code - mandatory for every PR
+
+- **DRY**: each piece of logic is implemented in only one place. Before writing 
+  new code, check if the logic already exists elsewhere.
+- **SRP**: every function does exactly one thing. A function doing several 
+  things should be split.
+- **No magic numbers/strings**: no hard-coded constants/strings in business logic. 
+  Everything belongs in a configuration file.
+- **Encapsulation**: a class's internal data structure is never exposed to other 
+  classes. One class must never "know" which key to pull from another class's 
+  internal dict.
+- Before finishing a feature, review the changes and ask: "Is there a code smell here?"

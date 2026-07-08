@@ -2,7 +2,7 @@
 
 A command-driven chess engine in Python. You supply a starting board and a list of commands (clicks, waits, prints); the engine processes them and updates the board state.
 
-> **Note:** This is an early, simplified implementation. The full product vision (a **real-time**, no-turns game with move travel time, cooldowns, and scoring) is described in [kong_fu_chess_requirements.md](kong_fu_chess_requirements.md). The current code is an instant-move engine only.
+> **Note:** This is an early, simplified implementation. The full product vision (a **real-time**, no-turns game with move travel time, cooldowns, and scoring) is described in [kong_fu_chess_requirements.md](kong_fu_chess_requirements.md). Moves now take **travel time** (a piece is shown at its origin until it has traveled far enough), but cooldowns, scoring, and networking are not implemented yet.
 
 ## Installation
 
@@ -38,9 +38,11 @@ print board
 
 | Command | Meaning |
 |---------|---------|
-| `click x y` | Click on pixel `(x, y)` — selects a piece, moves, captures, or clears the selection |
-| `wait <ms>` | Advances the game clock by milliseconds |
+| `click x y` | Click on pixel `(x, y)` — selects a piece, starts a move/capture, or clears the selection |
+| `wait <ms>` | Advances the game clock by milliseconds, completing any moves that have finished traveling |
 | `print board` | Prints the current board state |
+
+> **Moves take time:** a move does not apply instantly. It takes `cells_traveled × MS_PER_CELL` (1000 ms per cell) to arrive; the piece stays on its origin cell until a `wait` advances the clock past its arrival time. A move never completes without a sufficient `wait`.
 
 > **Heads up:** Click coordinates are `(x, y)` in pixels, while the board is indexed `[row][col]`. The conversion is `row = y // CELL_SIZE`, `col = x // CELL_SIZE` (cell size = 100).
 
@@ -53,7 +55,7 @@ print board
 | [board.py](board.py) | `Board` — holds the grid and provides bounds-safe cell access |
 | [engine.py](engine.py) | `GameEngine` — parses and runs commands against the board |
 | [main.py](main.py) | Input parsing (`parse_input`) and entry point (`main`) |
-| [config.py](config.py) | Shared constants (`CELL_SIZE`, color names, empty token) |
+| [config.py](config.py) | Shared constants (`CELL_SIZE`, `MS_PER_CELL`, color names, empty token) |
 
 ## Tests
 

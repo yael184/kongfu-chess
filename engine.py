@@ -3,10 +3,22 @@ from board import Board
 from pieces import Piece
 import config
 
+
+class PendingMove:
+    """מהלך שיצא לדרך ועדיין 'בטיסה'. הכלי נשאר בתא המקור עד arrival_ms."""
+    def __init__(self, from_row, from_col, to_row, to_col, arrival_ms):
+        self.from_row = from_row
+        self.from_col = from_col
+        self.to_row = to_row
+        self.to_col = to_col
+        self.arrival_ms = arrival_ms
+
+
 class GameEngine:
     def __init__(self, board: Board):
         self.board = board
         self.game_clock_ms = 0
+        self.pending_moves = []  # מהלכים שבתהליך תנועה, ממתינים לזמן הגעתם
 
     def execute_command(self, command_str: str):
         parts = command_str.strip().split()
@@ -55,11 +67,31 @@ class GameEngine:
                 self.board.selected_piece = None
                 return
 
-        # 3. ביצוע התנועה (הזזה חלקה או אכילת אויב)
-        self.board.move_piece(sel_row, sel_col, row, col)
+        # 3. יציאה לדרך: המהלך אינו מיידי אלא נמשך זמן פיזי לפי אורך המסלול.
+        #    הכלי נשאר בתא המקור ויוזז רק בהגעתו (בעת קידום השעון).
+        arrival_ms = self.game_clock_ms + self._travel_time(sel_row, sel_col, row, col)
+        self.pending_moves.append(PendingMove(sel_row, sel_col, row, col, arrival_ms))
+        self.board.selected_piece = None
+
+    def _travel_time(self, from_row, from_col, to_row, to_col) -> int:
+        """זמן ההגעה נגזר ממספר התאים במסלול (מרחק צ'בישב) כפול MS_PER_CELL."""
+        cells = max(abs(to_row - from_row), abs(to_col - from_col))
+        return cells * config.MS_PER_CELL
+
+    def _resolve_arrived_moves(self):
+        """מבצע בפועל כל מהלך שזמן הגעתו כבר חלף לפי השעון הנוכחי."""
+        still_pending = []
+        for move in self.pending_moves:
+            if move.arrival_ms <= self.game_clock_ms:
+                self.board.move_piece(move.from_row, move.from_col,
+                                      move.to_row, move.to_col)
+            else:
+                still_pending.append(move)
+        self.pending_moves = still_pending
 
     def _handle_wait(self, ms: int):
         self.game_clock_ms += ms
+        self._resolve_arrived_moves()
 
     def _handle_print_board(self):
         print(self.board)

@@ -55,6 +55,7 @@ def test_main_execution_flow(capsys):
         "Commands:\n"
         "click 50 50\n"
         "click 150 50\n"
+        "wait 1000\n"      # המתנה עד הגעת המהלך (תא אחד)
         "print board\n"
     )
     main.main(input_stream=StringIO(input_data))
