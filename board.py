@@ -1,9 +1,10 @@
 # board.py
+from pieces import Piece
 
 class Board:
     def __init__(self, grid):
-        self.grid = grid
-        self.selected_piece = None  # יישמר כ-tuple: (row, col)
+        self.grid = grid  # יכיל אובייקטים של Piece או "."
+        self.selected_piece = None
 
     def is_within_bounds(self, row, col):
         return 0 <= row < len(self.grid) and 0 <= col < len(self.grid[0])
@@ -15,29 +16,24 @@ class Board:
 
     def is_empty(self, row, col):
         cell = self.get_cell(row, col)
-        return cell == "." or cell is None
+        return isinstance(cell, Piece) and cell.color is None
 
     def get_piece_color(self, row, col):
-        """מחזירה את צבע הכלי לפי האות הראשונה (w או b)."""
+        """מחזירה את צבע הכלי ישירות מתוך האובייקט."""
         cell = self.get_cell(row, col)
-        if not cell or cell == ".":
-            return None
-        
-        if cell.startswith("w"):
-            return "WHITE"
-        elif cell.startswith("b"):
-            return "BLACK"
+        if isinstance(cell, Piece):
+            return cell.color
         return None
 
     def select_piece(self, row, col):
         self.selected_piece = (row, col)
 
     def move_piece(self, from_row, from_col, to_row, to_col):
-        """מבצעת תנועה חלקה (או אכילה) בתוך המטריצה."""
         moving_piece = self.grid[from_row][from_col]
         self.grid[to_row][to_col] = moving_piece
         self.grid[from_row][from_col] = "."
         self.selected_piece = None
 
     def __str__(self):
-        return "\n".join(" ".join(row) for row in self.grid)
+        # קורא ל-__str__ של כל כלי או משאיר "."
+        return "\n".join(" ".join(str(cell) for cell in row) for row in self.grid)
