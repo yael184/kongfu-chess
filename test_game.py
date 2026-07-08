@@ -132,21 +132,24 @@ def test_main_execution_error_flow():
 
 # בדיקות ישירות לחוקיות התנועה של הכלים (Unit Tests מבודדים)
 def test_pieces_movement_logic():
+    # לוח ריק אמיתי (6x6) שישמש לבדיקות המסלול של הצריח/רץ
+    empty_board = Board([[EmptyCell() for _ in range(6)] for _ in range(6)])
+
     king = King("WHITE")
-    assert king.is_valid_move(0, 0, 1, 1) is True   # צעד אחד באלכסון
-    assert king.is_valid_move(0, 0, 2, 0) is False  # שני צעדים (לא חוקי)
+    assert king.is_valid_move(0, 0, 1, 1, empty_board) is True   # צעד אחד באלכסון
+    assert king.is_valid_move(0, 0, 2, 0, empty_board) is False  # שני צעדים (לא חוקי)
 
     rook = Rook("WHITE")
-    assert rook.is_valid_move(0, 0, 0, 5) is True   # תנועה אופקית
-    assert rook.is_valid_move(0, 0, 3, 3) is False  # אלכסון (לא חוקי)
+    assert rook.is_valid_move(0, 0, 0, 5, empty_board) is True   # תנועה אופקית
+    assert rook.is_valid_move(0, 0, 3, 3, empty_board) is False  # אלכסון (לא חוקי)
 
     bishop = Bishop("BLACK")
-    assert bishop.is_valid_move(2, 2, 5, 5) is True  # אלכסון מושלם
-    assert bishop.is_valid_move(2, 2, 2, 4) is False # ישר (לא חוקי)
+    assert bishop.is_valid_move(2, 2, 5, 5, empty_board) is True  # אלכסון מושלם
+    assert bishop.is_valid_move(2, 2, 2, 4, empty_board) is False # ישר (לא חוקי)
 
     knight = Knight("WHITE")
-    assert knight.is_valid_move(0, 0, 2, 1) is True  # צורת L
-    assert knight.is_valid_move(0, 0, 2, 2) is False # לא L
+    assert knight.is_valid_move(0, 0, 2, 1, empty_board) is True  # צורת L
+    assert knight.is_valid_move(0, 0, 2, 2, empty_board) is False # לא L
 
 
 # בדיקות אינטגרציה דרך ה-main ולוח המשחק באמצעות הזרקה (Dependency Injection)
@@ -197,7 +200,8 @@ def test_rook_and_bishop_integration(capsys):
 
     
 def test_empty_cell_behavior():
+    empty_board = Board([[EmptyCell() for _ in range(3)] for _ in range(3)])
     empty = EmptyCell()
     assert str(empty) == "."
     assert empty.color is None
-    assert empty.is_valid_move(0, 0, 1, 1) is False
+    assert empty.is_valid_move(0, 0, 1, 1, empty_board) is False

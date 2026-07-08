@@ -2,16 +2,7 @@
 import sys
 from board import Board
 from engine import GameEngine
-from pieces import King, Rook, Bishop, Queen, Knight,EmptyCell
-
-# מיפוי המחרוזות מהקלט לאובייקטים חוקיים
-PIECE_MAP = {
-    "wK": King("WHITE"), "bK": King("BLACK"),
-    "wR": Rook("WHITE"), "bR": Rook("BLACK"),
-    "wB": Bishop("WHITE"), "bB": Bishop("BLACK"),
-    "wQ": Queen("WHITE"), "bQ": Queen("BLACK"),
-    "wN": Knight("WHITE"), "bN": Knight("BLACK")
-}
+from registry import create_piece_from_token  # ייבוא מהקובץ החדש
 
 def parse_input(txt: str):
     if "Commands:" not in txt or "Board:" not in txt:
@@ -28,38 +19,30 @@ def parse_input(txt: str):
         print("ERROR UNKNOWN_TOKEN")
         sys.exit(0)
 
-    # 1. בדיקת לוח מלבני
+    # בדיקת לוח מלבני
     expected_width = len(raw_grid[0])
     for row in raw_grid:
         if len(row) != expected_width:
             print("ERROR ROW_WIDTH_MISMATCH")
             sys.exit(0)
 
-    # 2. המרה לאובייקטים חוקיים ובדיקת כלים לא מוכרים
+    # המרה דינמית באמצעות ה-Registry Factory
     grid = []
     for row in raw_grid:
         grid_row = []
         for cell in row:
-            if cell == '.':
-                grid_row.append(EmptyCell())
-                continue
-            if cell in PIECE_MAP:
-                # יצירת אובייקט חדש מאותו סוג כדי שלא ישתפו הפניה
-                cls = PIECE_MAP[cell].__class__
-                color = PIECE_MAP[cell].color
-                grid_row.append(cls(color))
-            else:
+            piece = create_piece_from_token(cell)
+            if piece is None:
                 print("ERROR UNKNOWN_TOKEN")
                 sys.exit(0)
+            grid_row.append(piece)
         grid.append(grid_row)
 
     return Board(grid), commands
 
-
 def main(input_stream=None):
     if input_stream is None:
         input_stream = sys.stdin
-        
     txt = input_stream.read()
     board, commands = parse_input(txt)
     
