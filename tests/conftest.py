@@ -1,5 +1,5 @@
 # tests/conftest.py
-# פיקסטורות משותפות לכל קבצי הבדיקה שבתיקיית tests/
+# Shared fixtures for all test files under tests/.
 import pytest
 
 from board import Board
@@ -9,7 +9,7 @@ from pieces import King, EmptyCell
 
 @pytest.fixture
 def valid_grid():
-    """לוח 3x3 תקין עם שני מלכים לבנים ומלך שחור."""
+    """A valid 3x3 board with two white kings and one black king."""
     return [
         [King("WHITE"), EmptyCell(), King("BLACK")],
         [EmptyCell(), EmptyCell(), EmptyCell()],
@@ -30,10 +30,10 @@ def sample_engine(sample_board):
 @pytest.fixture
 def make_board():
     """
-    מפעל (factory) לבניית לוח מתוך מטריצה של תווים, למשל:
+    Factory that builds a board from a matrix of tokens, e.g.:
         make_board([["wR", ".", "bB"],
                     [".",  ".", "."]])
-    מקל על בניית תרחישים ספציפיים בבדיקות.
+    Makes it easy to set up specific scenarios in tests.
     """
     from registry import create_piece_from_token
 

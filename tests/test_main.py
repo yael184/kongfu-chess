@@ -1,5 +1,5 @@
 # tests/test_main.py
-# בדיקות אינטגרציה ל-parse_input ולזרימת ה-main.
+# Integration tests for parse_input and the main flow.
 import sys
 from io import StringIO
 
@@ -29,7 +29,7 @@ def test_parse_input_missing_board_section_exits():
 
 
 def test_parse_input_empty_board_exits():
-    # אין שורות לוח כלל בין Board: ל-Commands:
+    # No board rows at all between Board: and Commands:.
     with pytest.raises(SystemExit):
         main.parse_input("Board:\nCommands:\nprint board")
 
@@ -46,7 +46,7 @@ def test_parse_input_unknown_token_exits():
         main.parse_input(txt)
 
 
-# --- main (זרימה מלאה) ---
+# --- main (full flow) ---
 def test_main_execution_flow(capsys):
     input_data = (
         "Board:\n"
@@ -55,7 +55,7 @@ def test_main_execution_flow(capsys):
         "Commands:\n"
         "click 50 50\n"
         "click 150 50\n"
-        "wait 1000\n"      # המתנה עד הגעת המהלך (תא אחד)
+        "wait 1000\n"      # wait until the move arrives (one cell)
         "print board\n"
     )
     main.main(input_stream=StringIO(input_data))
@@ -69,14 +69,14 @@ def test_main_random_text_exits():
 
 
 def test_main_no_commands_prints_error(capsys):
-    # לוח תקין אך ללא פקודות -> ההסתעפות 'not commands' ב-main
+    # Valid board but no commands -> the 'not commands' branch in main.
     input_data = "Board:\nwK\nCommands:\n"
     main.main(input_stream=StringIO(input_data))
     assert "ERROR UNKNOWN_TOKEN" in capsys.readouterr().out
 
 
 def test_main_reads_from_stdin_by_default(capsys, monkeypatch):
-    # כיסוי ההסתעפות שבה input_stream הוא None ונקרא מ-sys.stdin
+    # Covers the branch where input_stream is None and it reads from sys.stdin.
     input_data = (
         "Board:\n"
         "wK .\n"

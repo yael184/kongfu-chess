@@ -2,9 +2,10 @@
 import sys
 from board import Board
 from engine import GameEngine
-from registry import create_piece_from_token  # ייבוא מהקובץ החדש
+from registry import create_piece_from_token
 
 def parse_input(txt: str):
+    """Parse a board+commands document into a Board and a list of command strings."""
     if "Commands:" not in txt or "Board:" not in txt:
         print("ERROR UNKNOWN_TOKEN")
         sys.exit(0)
@@ -19,14 +20,14 @@ def parse_input(txt: str):
         print("ERROR UNKNOWN_TOKEN")
         sys.exit(0)
 
-    # בדיקת לוח מלבני
+    # Ensure the board is rectangular (all rows share the same width).
     expected_width = len(raw_grid[0])
     for row in raw_grid:
         if len(row) != expected_width:
             print("ERROR ROW_WIDTH_MISMATCH")
             sys.exit(0)
 
-    # המרה דינמית באמצעות ה-Registry Factory
+    # Convert each token via the registry factory.
     grid = []
     for row in raw_grid:
         grid_row = []
@@ -41,6 +42,7 @@ def parse_input(txt: str):
     return Board(grid), commands
 
 def main(input_stream=None):
+    """Read a document from input_stream (defaults to stdin), build the engine, and run every command."""
     if input_stream is None:
         input_stream = sys.stdin
     txt = input_stream.read()

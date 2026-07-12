@@ -2,21 +2,23 @@
 import config
 
 class Piece:
+    """Base class for every piece type. Subclasses encode only the shape rules of a move."""
+
     def __init__(self, color: str, symbol: str):
-        self.color = color      # config.COLOR_WHITE / config.COLOR_BLACK או None לתא ריק
-        self.symbol = symbol    # "K", "R", "B", "Q", "N" או "." לתא ריק
+        self.color = color      # config.COLOR_WHITE / config.COLOR_BLACK, or None for an empty cell.
+        self.symbol = symbol    # "K", "R", "B", "Q", "N", or "." for an empty cell.
 
     def is_valid_move(self, from_row: int, from_col: int, to_row: int, to_col: int, board) -> bool:
-        """מחזיר True אם התנועה חוקית לפי צורת הכלי ומצב הלוח."""
+        """Return True if the move is legal for this piece's shape and the current board state."""
         raise NotImplementedError
 
     def promoted_piece(self, to_row: int, board):
-        """הכלי שאליו הופך הכלי הנוכחי כשהוא מגיע ל-to_row, או None אם אין הכתרה.
-        ברירת המחדל: אין הכתרה. רק Pawn דורס זאת (הכתרה למלכה בשורה האחרונה)."""
+        """The piece this one becomes upon reaching to_row, or None if no promotion applies.
+        Default: no promotion. Only Pawn overrides this (promotes to a Queen on the last row)."""
         return None
 
     def _is_path_clear(self, from_row: int, from_col: int, to_row: int, to_col: int, board) -> bool:
-        """פונקציית עזר שסורקת את המסלול ומוודא שאין חוסמים באמצע."""
+        """Helper that scans the route and verifies there are no blocking pieces in between."""
         row_step = 0 if from_row == to_row else (1 if to_row > from_row else -1)
         col_step = 0 if from_col == to_col else (1 if to_col > from_col else -1)
 
@@ -25,7 +27,7 @@ class Piece:
 
         while current_row != to_row or current_col != to_col:
             if not board.is_empty(current_row, current_col):
-                return False  # נמצא כלי חוסם במסלול
+                return False  # A blocking piece was found on the route.
             current_row += row_step
             current_col += col_step
         return True
@@ -38,6 +40,8 @@ class Piece:
 
 
 class EmptyCell(Piece):
+    """Null Object for an empty cell, so the grid is never None and callers never special-case empties."""
+
     def __init__(self):
         super().__init__(color=None, symbol=".")
 
@@ -99,12 +103,12 @@ class Pawn(Piece):
         super().__init__(color, "P")
 
     def _forward(self) -> int:
-        # לבן נע למעלה (מינוס 1 בשורות), שחור נע למטה (פלוס 1 בשורות)
+        # White moves up (row - 1), black moves down (row + 1).
         return -1 if self.color == config.COLOR_WHITE else 1
 
     def _start_row(self, board) -> int:
-        # שורת הפתיחה היא שורת הבית של כל צבע (הקצה שממנו הוא מתקדם):
-        # הלבן נע כלפי מעלה ולכן מתחיל בשורה האחרונה; השחור נע מטה ומתחיל בשורה 0.
+        # The start row is each color's home edge (the edge it advances from):
+        # white moves up, so it starts on the last row; black moves down and starts on row 0.
         return len(board.grid) - 1 if self.color == config.COLOR_WHITE else 0
 
     def is_valid_move(self, from_row: int, from_col: int, to_row: int, to_col: int, board) -> bool:
@@ -112,24 +116,24 @@ class Pawn(Piece):
         row_diff = to_row - from_row
         col_diff = abs(to_col - from_col)
 
-        # 1. תנועה ישר קדימה: בדיוק צעד אחד, והיעד חייב להיות ריק (אסור לאכול קדימה)
+        # 1. Straight forward one step; the destination must be empty (no capturing straight ahead).
         if col_diff == 0 and row_diff == direction:
             return board.is_empty(to_row, to_col)
 
-        # 2. צעד כפול משורת הפתיחה: גם התא האמצעי וגם היעד חייבים להיות פנויים
+        # 2. Two-cell first move from the start row: both the middle cell and the destination must be empty.
         if col_diff == 0 and row_diff == 2 * direction and from_row == self._start_row(board):
             middle_row = from_row + direction
             return board.is_empty(middle_row, to_col) and board.is_empty(to_row, to_col)
 
-        # 3. אכילה באלכסון: צעד אחד קדימה, צעד אחד הצידה, והיעד חייב להכיל כלי
+        # 3. Diagonal capture: one step forward and one sideways; the destination must hold a piece.
         if col_diff == 1 and row_diff == direction:
             return not board.is_empty(to_row, to_col)
 
-        # כל תנועה אחרת אינה חוקית
+        # Any other move is illegal.
         return False
 
     def promoted_piece(self, to_row: int, board):
-        # הכתרה: חייל שהגיע לשורה האחרונה בכיוון תנועתו הופך למלכה
+        # Promotion: a pawn reaching the last row in its direction of travel becomes a Queen.
         last_row = 0 if self.color == config.COLOR_WHITE else len(board.grid) - 1
         if to_row == last_row:
             return Queen(self.color)

@@ -1,5 +1,5 @@
 # tests/test_registry.py
-# בדיקות למפעל היצירה (Factory) שממיר תווים לאובייקטי כלים.
+# Tests for the factory that converts tokens into piece objects.
 import pytest
 
 from registry import create_piece_from_token

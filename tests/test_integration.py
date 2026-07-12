@@ -1,5 +1,5 @@
 # tests/test_integration.py
-# בדיקות קצה-לקצה של תרחישי משחק שלמים דרך main (הזרקת קלט).
+# End-to-end tests of complete game scenarios through main (injected input).
 from io import StringIO
 
 import main
@@ -11,18 +11,18 @@ def test_king_legal_and_illegal_commands(capsys):
         "wK . .\n"
         ". . .\n"
         "Commands:\n"
-        "click 50 50\n"   # בחירת המלך ב-(0,0)
-        "click 250 50\n"  # מהלך לא חוקי (מרחק 2) - יתעלם
+        "click 50 50\n"   # select the king at (0,0)
+        "click 250 50\n"  # illegal move (distance 2) - ignored
         "print board\n"
-        "click 50 50\n"   # בחירה מחדש
-        "click 150 150\n"  # מהלך חוקי (אלכסון 1)
-        "wait 1000\n"      # המתנה עד הגעת המהלך
+        "click 50 50\n"   # reselect
+        "click 150 150\n"  # legal move (diagonal 1)
+        "wait 1000\n"      # wait until the move arrives
         "print board\n"
     )
     main.main(input_stream=StringIO(input_data))
     out = capsys.readouterr().out
-    assert "wK . .\n. . ." in out   # לאחר המהלך הלא חוקי הכלי לא זז
-    assert ". . .\n. wK ." in out   # לאחר המהלך החוקי
+    assert "wK . .\n. . ." in out   # after the illegal move the piece did not move
+    assert ". . .\n. wK ." in out   # after the legal move
 
 
 def test_rook_and_bishop_integration(capsys):
@@ -32,12 +32,12 @@ def test_rook_and_bishop_integration(capsys):
         ". bB .\n"
         ". . .\n"
         "Commands:\n"
-        "click 50 50\n"    # בחירת צריח (0,0)
-        "click 50 250\n"   # הזזת צריח ל-(2,0) - קו ישר חוקי (מרחק 2 -> 2000ms)
-        "wait 2000\n"      # הצריח מגיע; הלוח משתחרר (אין תנועה במקביל)
-        "click 150 150\n"  # בחירת רץ (1,1)
-        "click 250 250\n"  # הזזת רץ ל-(2,2) - אלכסון חוקי (מרחק 1 -> 1000ms)
-        "wait 1000\n"      # הרץ מגיע
+        "click 50 50\n"    # select the rook (0,0)
+        "click 50 250\n"   # move the rook to (2,0) - legal straight line (distance 2 -> 2000ms)
+        "wait 2000\n"      # the rook arrives; the board unlocks (no concurrent movement)
+        "click 150 150\n"  # select the bishop (1,1)
+        "click 250 250\n"  # move the bishop to (2,2) - legal diagonal (distance 1 -> 1000ms)
+        "wait 1000\n"      # the bishop arrives
         "print board\n"
     )
     main.main(input_stream=StringIO(input_data))
@@ -51,39 +51,39 @@ def test_rook_and_bishop_integration(capsys):
 
 
 def test_movement_over_time_shows_origin_then_destination(capsys):
-    # לפני זמן ההגעה הלוח המודפס עדיין מציג את הכלי במקור; אחרי המתנה מספקת - ביעד.
+    # Before the arrival time the printed board still shows the piece at the origin; after a sufficient wait - at the destination.
     input_data = (
         "Board:\n"
         "wR . .\n"
         ". . .\n"
         ". . .\n"
         "Commands:\n"
-        "click 50 50\n"    # בחירת צריח (0,0)
-        "click 50 250\n"   # הזזה ל-(2,0), מרחק 2 -> זמן הגעה 2000ms
-        "print board\n"    # עדיין בטיסה: הצריח במקור
-        "wait 2000\n"      # השלמת המהלך
-        "print board\n"    # לאחר ההגעה: הצריח ביעד
+        "click 50 50\n"    # select the rook (0,0)
+        "click 50 250\n"   # move to (2,0), distance 2 -> arrival time 2000ms
+        "print board\n"    # still in flight: the rook is at the origin
+        "wait 2000\n"      # complete the move
+        "print board\n"    # after arrival: the rook is at the destination
     )
     main.main(input_stream=StringIO(input_data))
     out = capsys.readouterr().out
-    assert "wR . .\n. . .\n. . ." in out   # לפני ההגעה - במקור
-    assert ". . .\n. . .\nwR . ." in out   # אחרי ההגעה - ביעד
+    assert "wR . .\n. . .\n. . ." in out   # before arrival - at the origin
+    assert ". . .\n. . .\nwR . ." in out   # after arrival - at the destination
 
 
 def test_opposite_colors_do_not_move_concurrently_in_common_route(capsys):
-    # כל עוד מהלך אחד בתהליך, הלוח נעול: הצריח השחור אינו יכול לצאת לדרך
-    # במקביל לצריח הלבן, ולכן הוא נשאר במקומו.
+    # While one move is in progress the board is locked: the black rook cannot set off
+    # concurrently with the white rook, so it stays put.
     input_data = (
         "Board:\n"
         "wR . .\n"
         ". . .\n"
         "bR . .\n"
         "Commands:\n"
-        "click 50 50\n"    # בחירת הצריח הלבן (0,0)
-        "click 250 50\n"   # יציאה למהלך ל-(0,2) - הלוח ננעל
-        "click 50 250\n"   # ניסיון לבחור צריח שחור (2,0) - מתעלמים בזמן הנעילה
-        "click 250 250\n"  # ניסיון להזיזו ל-(2,2) - מתעלמים
-        "wait 2000\n"      # הצריח הלבן מגיע
+        "click 50 50\n"    # select the white rook (0,0)
+        "click 250 50\n"   # launch a move to (0,2) - the board locks
+        "click 50 250\n"   # attempt to select the black rook (2,0) - ignored while locked
+        "click 250 250\n"  # attempt to move it to (2,2) - ignored
+        "wait 2000\n"      # the white rook arrives
         "print board\n"
     )
     main.main(input_stream=StringIO(input_data))
@@ -97,16 +97,16 @@ def test_opposite_colors_do_not_move_concurrently_in_common_route(capsys):
 
 
 def test_jump_dodges_and_eats_attacker(capsys):
-    # החייל קופץ; הצריח הסמוך מגיע בזמן הקפיצה ונאכל על ידי הקופץ.
+    # The pawn jumps; the adjacent rook arrives during the jump and is eaten by the jumper.
     input_data = (
         "Board:\n"
         "wP bR .\n"
         ". . .\n"
         ". . .\n"
         "Commands:\n"
-        "jump 50 50\n"     # (0,0) קופץ
-        "click 150 50\n"   # בחירת הצריח (0,1)
-        "click 50 50\n"    # תקיפה אל (0,0), מרחק 1 -> הגעה ב-1000 (בזמן הקפיצה)
+        "jump 50 50\n"     # (0,0) jumps
+        "click 150 50\n"   # select the rook (0,1)
+        "click 50 50\n"    # attack toward (0,0), distance 1 -> arrival 1000 (during the jump)
         "wait 1000\n"
         "print board\n"
     )
@@ -121,16 +121,16 @@ def test_jump_dodges_and_eats_attacker(capsys):
 
 
 def test_jump_lands_before_attacker_and_is_eaten(capsys):
-    # הצריח רחוק ומגיע אחרי שהקופץ נחת -> הצריח אוכל את החייל.
+    # The rook is far and arrives after the jumper landed -> the rook eats the pawn.
     input_data = (
         "Board:\n"
         "wP . bR\n"
         ". . .\n"
         ". . .\n"
         "Commands:\n"
-        "jump 50 50\n"     # (0,0) קופץ, נחיתה ב-1000
-        "click 250 50\n"   # בחירת הצריח (0,2)
-        "click 50 50\n"    # תקיפה אל (0,0), מרחק 2 -> הגעה ב-2000 (אחרי הנחיתה)
+        "jump 50 50\n"     # (0,0) jumps, lands at 1000
+        "click 250 50\n"   # select the rook (0,2)
+        "click 50 50\n"    # attack toward (0,0), distance 2 -> arrival 2000 (after landing)
         "wait 2000\n"
         "print board\n"
     )
@@ -145,24 +145,24 @@ def test_jump_lands_before_attacker_and_is_eaten(capsys):
 
 
 def test_capturing_king_ends_game_and_freezes_board(capsys):
-    # אכילת המלך מסיימת את המשחק; מהלכים שלאחר מכן מתעלמים והלוח קפוא.
+    # Capturing the king ends the game; subsequent moves are ignored and the board is frozen.
     input_data = (
         "Board:\n"
         "wR . bK\n"
         ". bR .\n"
         ". . .\n"
         "Commands:\n"
-        "click 50 50\n"    # בחירת הצריח הלבן (0,0)
-        "click 250 50\n"   # מהלך אל המלך השחור ב-(0,2)
-        "wait 2000\n"      # ההגעה אוכלת את המלך -> game over
-        "click 150 150\n"  # ניסיון לבחור את bR לאחר הסיום - מתעלמים
-        "click 50 150\n"   # ניסיון מהלך - מתעלמים
+        "click 50 50\n"    # select the white rook (0,0)
+        "click 250 50\n"   # move toward the black king at (0,2)
+        "wait 2000\n"      # arrival captures the king -> game over
+        "click 150 150\n"  # attempt to select bR after the game ended - ignored
+        "click 50 150\n"   # attempt a move - ignored
         "wait 2000\n"
         "print board\n"
     )
     main.main(input_stream=StringIO(input_data))
     out = capsys.readouterr().out
-    # הצריח הלבן תפס את מקום המלך, והצריח השחור נותר במקומו.
+    # The white rook took the king's cell, and the black rook stayed put.
     expected = (
         ". . wR\n"
         ". bR .\n"

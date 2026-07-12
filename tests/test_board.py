@@ -1,5 +1,5 @@
 # tests/test_board.py
-# בדיקות למחלקת Board.
+# Tests for the Board class.
 from board import Board
 from pieces import King, EmptyCell
 
@@ -34,7 +34,7 @@ def test_is_empty(sample_board):
 
 
 def test_is_empty_out_of_bounds_true(sample_board):
-    # מחוץ ללוח מוחזר EmptyCell ולכן נחשב ריק
+    # Out of bounds returns an EmptyCell, so it counts as empty.
     assert sample_board.is_empty(99, 99) is True
 
 
@@ -71,7 +71,7 @@ def test_move_piece_capture_overwrites_target():
         [EmptyCell(), EmptyCell()],
     ]
     board = Board(grid)
-    board.move_piece(0, 0, 0, 1)  # אכילה
+    board.move_piece(0, 0, 0, 1)  # capture
     assert str(board.grid[0][1]) == "wK"
     assert isinstance(board.grid[0][0], EmptyCell)
 
