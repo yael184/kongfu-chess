@@ -42,7 +42,7 @@ print board
 | `wait <ms>` | Advances the game clock by milliseconds, completing any moves that have finished traveling |
 | `print board` | Prints the current board state |
 
-> **Moves take time:** a move does not apply instantly. It takes `cells_traveled × MS_PER_CELL` (1000 ms per cell) to arrive; the piece stays on its origin cell until a `wait` advances the clock past its arrival time. A move never completes without a sufficient `wait`.
+> **Moves take time:** a move does not apply instantly. It takes `cells_traveled × MS_PER_CELL` (1000 ms per cell) to arrive; the piece stays on its origin cell until a `wait` advances the clock past its arrival time. A move never completes without a sufficient `wait`. **While a move is in progress the board is locked** — any further clicks are ignored, so only one piece moves at a time (no concurrent moves, including opposite colors) and a moving piece cannot be redirected. There is **no cooldown**: as soon as a piece arrives the board unlocks and it can move again immediately.
 
 > **Heads up:** Click coordinates are `(x, y)` in pixels, while the board is indexed `[row][col]`. The conversion is `row = y // CELL_SIZE`, `col = x // CELL_SIZE` (cell size = 100).
 

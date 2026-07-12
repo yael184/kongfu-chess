@@ -37,6 +37,12 @@ class GameEngine:
             print(f"ERROR: Unknown command '{command_str}'")
 
     def _handle_click(self, x: int, y: int):
+        # נעילת קלט בזמן תנועה: כל עוד יש מהלך בתהליך (piece "on the common route"),
+        # הלוח נעול ולחיצות מתעלמות. כך שני כלים לעולם אינם נעים במקביל, כולל צבעים
+        # מנוגדים, וגם אי אפשר לנתב-מחדש כלי שכבר בדרך. הנעילה משתחררת עם הגעת המהלך.
+        if self.pending_moves:
+            return
+
         row = y // config.CELL_SIZE
         col = x // config.CELL_SIZE
 
@@ -68,7 +74,8 @@ class GameEngine:
                 return
 
         # 3. יציאה לדרך: המהלך אינו מיידי אלא נמשך זמן פיזי לפי אורך המסלול.
-        #    הכלי נשאר בתא המקור ויוזז רק בהגעתו (בעת קידום השעון).
+        #    הכלי נשאר בתא המקור ויוזז רק בהגעתו (בעת קידום השעון). מרגע זה הלוח
+        #    נעול (ראו הבדיקה בראש הפונקציה) עד שהמהלך יגיע ליעדו.
         arrival_ms = self.game_clock_ms + self._travel_time(sel_row, sel_col, row, col)
         self.pending_moves.append(PendingMove(sel_row, sel_col, row, col, arrival_ms))
         self.board.selected_piece = None

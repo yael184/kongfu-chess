@@ -125,6 +125,65 @@ def test_longer_move_takes_proportionally_more_time(make_board):
     assert engine.board.is_empty(0, 0)
 
 
+# --- ניתוב-מחדש בזמן תנועה + היעדר cooldown ---
+def test_moving_piece_cannot_be_redirected(make_board):
+    # כלי שיצא לדרך אינו ניתן להפניה מחדש עד שיגיע ליעדו המקורי.
+    board = make_board([
+        ["wR", ".", "."],
+        [".", ".", "."],
+        [".", ".", "."],
+    ])
+    engine = GameEngine(board)
+    engine.execute_command("click 50 50")    # בחירת הצריח (0,0)
+    engine.execute_command("click 50 250")   # יציאה למהלך ל-(2,0) [בתנועה]
+    # ניסיון לנתב מחדש בזמן שהכלי עדיין בדרך:
+    engine.execute_command("click 50 50")    # בחירה מחדש של הכלי הנע
+    engine.execute_command("click 150 50")   # ניסיון להפנות ל-(0,1) - אמור להיחסם
+    assert len(engine.pending_moves) == 1    # רק המהלך המקורי נותר
+    engine.execute_command("wait 2000")
+    assert str(engine.board.grid[2][0]) == "wR"  # הגיע ליעד המקורי
+    assert engine.board.is_empty(0, 1)           # לא נותב לכיוון אחר
+
+
+def test_board_is_locked_while_a_move_is_pending(make_board):
+    # כל עוד יש מהלך בתהליך, לחיצות על הלוח מתעלמות (אין תנועה במקביל).
+    board = make_board([
+        ["wR", ".", "."],
+        [".", ".", "."],
+        ["bR", ".", "."],
+    ])
+    engine = GameEngine(board)
+    engine.execute_command("click 50 50")    # בחירת הצריח הלבן (0,0)
+    engine.execute_command("click 250 50")   # יציאה למהלך ל-(0,2) - הלוח ננעל
+    engine.execute_command("click 50 250")   # ניסיון לבחור צריח שחור - מתעלמים
+    assert engine.board.selected_piece is None
+    engine.execute_command("click 250 250")  # ניסיון להזיזו - מתעלמים
+    assert len(engine.pending_moves) == 1     # רק המהלך הלבן קיים
+    engine.execute_command("wait 2000")
+    assert str(engine.board.grid[0][2]) == "wR"   # הלבן הגיע ליעדו
+    assert str(engine.board.grid[2][0]) == "bR"   # השחור לא זז כלל
+
+
+def test_piece_can_move_again_immediately_after_arrival(make_board):
+    # אין cooldown: מיד עם ההגעה אפשר לצאת למהלך חדש.
+    board = make_board([
+        ["wR", ".", "."],
+        [".", ".", "."],
+        [".", ".", "."],
+    ])
+    engine = GameEngine(board)
+    engine.execute_command("click 50 50")    # (0,0)
+    engine.execute_command("click 50 250")   # -> (2,0)
+    engine.execute_command("wait 2000")      # הגעה ליעד
+    assert str(engine.board.grid[2][0]) == "wR"
+    # מיד לאחר ההגעה, בלי שום השהיית cooldown, יוצאים למהלך נוסף:
+    engine.execute_command("click 50 250")   # בחירת הכלי ב-(2,0)
+    engine.execute_command("click 250 250")  # מהלך ל-(2,2)
+    assert len(engine.pending_moves) == 1    # המהלך החדש נקלט מיד
+    engine.execute_command("wait 2000")
+    assert str(engine.board.grid[2][2]) == "wR"
+
+
 # --- print board ---
 def test_print_board(sample_engine, capsys):
     sample_engine.execute_command("print board")
