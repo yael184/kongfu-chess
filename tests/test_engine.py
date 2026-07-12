@@ -184,6 +184,45 @@ def test_piece_can_move_again_immediately_after_arrival(make_board):
     assert str(engine.board.grid[2][2]) == "wR"
 
 
+# --- סיום משחק (אכילת מלך) ---
+def test_capturing_enemy_king_ends_game(make_board):
+    # כאשר כלי מגיע לתא שבו יושב מלך אויב - המשחק מסתיים.
+    board = make_board([
+        ["wR", ".", "bK"],
+        [".", ".", "."],
+        [".", ".", "."],
+    ])
+    engine = GameEngine(board)
+    engine.execute_command("click 50 50")     # בחירת הצריח הלבן (0,0)
+    engine.execute_command("click 250 50")    # מהלך אל המלך השחור ב-(0,2)
+    assert engine.game_over is False          # עדיין בדרך - טרם הוכרע
+    engine.execute_command("wait 2000")       # ההגעה מבצעת את האכילה
+    assert engine.game_over is True
+    assert str(engine.board.grid[0][2]) == "wR"   # הצריח תפס את מקום המלך
+
+
+def test_moves_are_ignored_after_game_over(make_board):
+    # לאחר סיום המשחק, פקודות מהלך נוספות מתעלמות והלוח אינו משתנה.
+    board = make_board([
+        ["wR", ".", "bK"],
+        [".", "bR", "."],
+        [".", ".", "."],
+    ])
+    engine = GameEngine(board)
+    engine.execute_command("click 50 50")     # בחירת הצריח הלבן
+    engine.execute_command("click 250 50")    # מהלך אל המלך (0,2)
+    engine.execute_command("wait 2000")       # אכילת המלך -> game over
+    assert engine.game_over is True
+
+    # ניסיון להזיז את הצריח השחור לאחר הסיום - אמור להתעלם:
+    engine.execute_command("click 150 150")   # בחירת bR ב-(1,1)
+    assert engine.board.selected_piece is None
+    engine.execute_command("click 50 150")    # ניסיון מהלך ל-(1,0)
+    assert engine.pending_moves == []
+    engine.execute_command("wait 2000")
+    assert str(engine.board.grid[1][1]) == "bR"   # הצריח השחור לא זז
+
+
 # --- print board ---
 def test_print_board(sample_engine, capsys):
     sample_engine.execute_command("print board")

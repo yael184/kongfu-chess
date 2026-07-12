@@ -1,6 +1,6 @@
 # engine.py
 from board import Board
-from pieces import Piece
+from pieces import Piece, King
 import config
 
 
@@ -19,6 +19,7 @@ class GameEngine:
         self.board = board
         self.game_clock_ms = 0
         self.pending_moves = []  # מהלכים שבתהליך תנועה, ממתינים לזמן הגעתם
+        self.game_over = False   # נדלק כאשר מלך נאכל; מרגע זה מהלכים מתעלמים
 
     def execute_command(self, command_str: str):
         parts = command_str.strip().split()
@@ -37,6 +38,10 @@ class GameEngine:
             print(f"ERROR: Unknown command '{command_str}'")
 
     def _handle_click(self, x: int, y: int):
+        # המשחק הסתיים (מלך נאכל): כל פקודת מהלך מתעלמת מכאן ואילך.
+        if self.game_over:
+            return
+
         # נעילת קלט בזמן תנועה: כל עוד יש מהלך בתהליך (piece "on the common route"),
         # הלוח נעול ולחיצות מתעלמות. כך שני כלים לעולם אינם נעים במקביל, כולל צבעים
         # מנוגדים, וגם אי אפשר לנתב-מחדש כלי שכבר בדרך. הנעילה משתחררת עם הגעת המהלך.
@@ -90,8 +95,12 @@ class GameEngine:
         still_pending = []
         for move in self.pending_moves:
             if move.arrival_ms <= self.game_clock_ms:
+                # קוראים את תא היעד לפני הדריסה: אם ישב שם מלך - המשחק הוכרע.
+                captured = self.board.get_cell(move.to_row, move.to_col)
                 self.board.move_piece(move.from_row, move.from_col,
                                       move.to_row, move.to_col)
+                if isinstance(captured, King):
+                    self.game_over = True
             else:
                 still_pending.append(move)
         self.pending_moves = still_pending

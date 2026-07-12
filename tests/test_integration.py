@@ -94,3 +94,30 @@ def test_opposite_colors_do_not_move_concurrently_in_common_route(capsys):
         "bR . ."
     )
     assert expected in out
+
+
+def test_capturing_king_ends_game_and_freezes_board(capsys):
+    # אכילת המלך מסיימת את המשחק; מהלכים שלאחר מכן מתעלמים והלוח קפוא.
+    input_data = (
+        "Board:\n"
+        "wR . bK\n"
+        ". bR .\n"
+        ". . .\n"
+        "Commands:\n"
+        "click 50 50\n"    # בחירת הצריח הלבן (0,0)
+        "click 250 50\n"   # מהלך אל המלך השחור ב-(0,2)
+        "wait 2000\n"      # ההגעה אוכלת את המלך -> game over
+        "click 150 150\n"  # ניסיון לבחור את bR לאחר הסיום - מתעלמים
+        "click 50 150\n"   # ניסיון מהלך - מתעלמים
+        "wait 2000\n"
+        "print board\n"
+    )
+    main.main(input_stream=StringIO(input_data))
+    out = capsys.readouterr().out
+    # הצריח הלבן תפס את מקום המלך, והצריח השחור נותר במקומו.
+    expected = (
+        ". . wR\n"
+        ". bR .\n"
+        ". . ."
+    )
+    assert expected in out
