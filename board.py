@@ -23,6 +23,9 @@ class Board:
             return cell.color
         return None
 
+    def set_cell(self, row, col, piece):
+        self.grid[row][col] = piece
+
     def select_piece(self, row, col):
         self.selected_piece = (row, col)
 

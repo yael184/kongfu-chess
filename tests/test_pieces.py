@@ -177,8 +177,51 @@ def test_pawn_diagonal_into_empty_invalid(empty_board):
     assert Pawn("WHITE").is_valid_move(2, 1, 1, 2, empty_board) is False
 
 
-def test_pawn_two_squares_invalid(empty_board):
-    assert Pawn("WHITE").is_valid_move(3, 1, 1, 1, empty_board) is False
+def test_pawn_two_squares_from_non_start_row_invalid(empty_board):
+    # לוח 6x6: שורת הפתיחה של הלבן היא 5; צעד כפול משורה 4 אינו חוקי
+    assert Pawn("WHITE").is_valid_move(4, 1, 2, 1, empty_board) is False
+
+
+# --- Pawn: צעד כפול משורת הפתיחה ---
+def test_pawn_white_two_squares_from_start_row_valid(empty_board):
+    # לוח 6x6 -> שורת הפתיחה של הלבן היא 5 (השורה האחרונה)
+    assert Pawn("WHITE").is_valid_move(5, 2, 3, 2, empty_board) is True
+
+
+def test_pawn_black_two_squares_from_start_row_valid(empty_board):
+    # שורת הפתיחה של השחור היא 0 (השורה הראשונה)
+    assert Pawn("BLACK").is_valid_move(0, 2, 2, 2, empty_board) is True
+
+
+def test_pawn_two_squares_blocked_in_middle_invalid():
+    grid = [[EmptyCell() for _ in range(6)] for _ in range(6)]
+    grid[4][2] = King("BLACK")  # חוסם בתא האמצעי (5 -> 4 -> 3)
+    board = Board(grid)
+    assert Pawn("WHITE").is_valid_move(5, 2, 3, 2, board) is False
+
+
+def test_pawn_two_squares_blocked_at_destination_invalid():
+    grid = [[EmptyCell() for _ in range(6)] for _ in range(6)]
+    grid[3][2] = King("BLACK")  # חוסם ביעד (5 -> 4 -> 3)
+    board = Board(grid)
+    assert Pawn("WHITE").is_valid_move(5, 2, 3, 2, board) is False
+
+
+# --- Pawn: הכתרה למלכה ---
+def test_pawn_white_promotes_on_last_row(empty_board):
+    promoted = Pawn("WHITE").promoted_piece(0, empty_board)   # שורה 0 = אחרונה ללבן
+    assert isinstance(promoted, Queen)
+    assert promoted.color == "WHITE"
+
+
+def test_pawn_black_promotes_on_last_row(empty_board):
+    promoted = Pawn("BLACK").promoted_piece(5, empty_board)   # שורה 5 = אחרונה לשחור ב-6x6
+    assert isinstance(promoted, Queen)
+    assert promoted.color == "BLACK"
+
+
+def test_pawn_no_promotion_on_middle_row(empty_board):
+    assert Pawn("WHITE").promoted_piece(3, empty_board) is None
 
 
 def test_pawn_sideways_invalid(empty_board):

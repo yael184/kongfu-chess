@@ -223,6 +223,31 @@ def test_moves_are_ignored_after_game_over(make_board):
     assert str(engine.board.grid[1][1]) == "bR"   # הצריח השחור לא זז
 
 
+# --- חוקי חייל מתקדמים (צעד כפול + הכתרה) ---
+def test_pawn_two_square_move_resolves_over_time(make_board):
+    # לוח 6x6: חייל לבן בשורת הפתיחה (5) זז שני תאים ל-(3,1).
+    grid = [["." for _ in range(6)] for _ in range(6)]
+    grid[5][1] = "wP"
+    engine = GameEngine(make_board(grid))
+    engine.execute_command("click 150 550")   # בחירת החייל (row 5, col 1)
+    engine.execute_command("click 150 350")   # יעד (row 3, col 1), מרחק 2 -> 2000ms
+    engine.execute_command("wait 2000")
+    assert str(engine.board.grid[3][1]) == "wP"
+    assert engine.board.is_empty(5, 1)
+
+
+def test_pawn_promotes_to_queen_on_last_row(make_board):
+    # חייל לבן צעד אחד לפני השורה האחרונה; בהגעתו לשורה 0 הופך למלכה.
+    grid = [["." for _ in range(6)] for _ in range(6)]
+    grid[1][3] = "wP"
+    engine = GameEngine(make_board(grid))
+    engine.execute_command("click 350 150")   # בחירת החייל (row 1, col 3)
+    engine.execute_command("click 350 50")    # יעד שורה 0 (row 0, col 3)
+    engine.execute_command("wait 1000")
+    assert str(engine.board.grid[0][3]) == "wQ"   # הוכתר למלכה
+    assert engine.board.is_empty(1, 3)
+
+
 # --- print board ---
 def test_print_board(sample_engine, capsys):
     sample_engine.execute_command("print board")

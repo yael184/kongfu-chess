@@ -99,11 +99,19 @@ class GameEngine:
                 captured = self.board.get_cell(move.to_row, move.to_col)
                 self.board.move_piece(move.from_row, move.from_col,
                                       move.to_row, move.to_col)
+                self._apply_promotion(move.to_row, move.to_col)
                 if isinstance(captured, King):
                     self.game_over = True
             else:
                 still_pending.append(move)
         self.pending_moves = still_pending
+
+    def _apply_promotion(self, row, col):
+        """מחליף כלי שהגיע ליעדו בכלי המוכתר שלו (חייל -> מלכה), אם יש."""
+        piece = self.board.get_cell(row, col)
+        promoted = piece.promoted_piece(row, self.board)
+        if promoted is not None:
+            self.board.set_cell(row, col, promoted)
 
     def _handle_wait(self, ms: int):
         self.game_clock_ms += ms
