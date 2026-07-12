@@ -13,7 +13,7 @@ def test_empty_command_is_noop(sample_engine):
 
 
 def test_unknown_command_prints_error(sample_engine, capsys):
-    sample_engine.execute_command("jump 10 20")
+    sample_engine.execute_command("teleport 10 20")
     assert "ERROR: Unknown command" in capsys.readouterr().out
 
 
@@ -246,6 +246,78 @@ def test_pawn_promotes_to_queen_on_last_row(make_board):
     engine.execute_command("wait 1000")
     assert str(engine.board.grid[0][3]) == "wQ"   # הוכתר למלכה
     assert engine.board.is_empty(1, 3)
+
+
+# --- קפיצה במקום (Dodge / Jump) ---
+def test_jumper_eats_attacker_that_arrives_during_jump(make_board):
+    # תוקף סמוך מגיע בדיוק בזמן הקפיצה (arrival == land) -> הקופץ אוכל אותו.
+    board = make_board([
+        ["wP", "bR", "."],
+        [".", ".", "."],
+        [".", ".", "."],
+    ])
+    engine = GameEngine(board)
+    engine.execute_command("jump 50 50")     # החייל הלבן (0,0) קופץ, נחיתה ב-1000
+    engine.execute_command("click 150 50")   # בחירת הצריח השחור (0,1)
+    engine.execute_command("click 50 50")    # תקיפה אל (0,0), מרחק 1 -> הגעה ב-1000
+    engine.execute_command("wait 1000")
+    assert str(engine.board.grid[0][0]) == "wP"   # הקופץ שרד ונשאר במקומו
+    assert engine.board.is_empty(0, 1)            # התוקף המגיע הוסר
+    assert engine.pending_moves == []
+
+
+def test_attacker_eats_jumper_that_already_landed(make_board):
+    # התוקף רחוק ומגיע (2000) אחרי שהקופץ נחת (1000) -> התוקף אוכל את הקופץ.
+    board = make_board([
+        ["wP", ".", "bR"],
+        [".", ".", "."],
+        [".", ".", "."],
+    ])
+    engine = GameEngine(board)
+    engine.execute_command("jump 50 50")     # (0,0) קופץ, נחיתה ב-1000
+    engine.execute_command("click 250 50")   # בחירת הצריח השחור (0,2)
+    engine.execute_command("click 50 50")    # תקיפה אל (0,0), מרחק 2 -> הגעה ב-2000
+    engine.execute_command("wait 2000")
+    assert str(engine.board.grid[0][0]) == "bR"   # התוקף אכל ותפס את התא
+    assert engine.board.is_empty(0, 2)
+
+
+def test_moving_piece_cannot_jump(make_board):
+    board = make_board([
+        ["wR", ".", "."],
+        [".", ".", "."],
+        [".", ".", "."],
+    ])
+    engine = GameEngine(board)
+    engine.execute_command("click 50 50")    # בחירת הצריח
+    engine.execute_command("click 50 250")   # מהלך ל-(2,0) - הצריח בתנועה
+    engine.execute_command("jump 50 50")     # ניסיון קפיצה בזמן תנועה - נדחה
+    assert (0, 0) not in engine.airborne
+
+
+def test_empty_cell_cannot_jump(make_board):
+    board = make_board([
+        ["wP", ".", "."],
+        [".", ".", "."],
+        [".", ".", "."],
+    ])
+    engine = GameEngine(board)
+    engine.execute_command("jump 150 50")    # (0,1) ריק - אין כלי לקפוץ
+    assert engine.airborne == {}
+
+
+def test_jump_lands_normally_when_no_attacker(make_board):
+    # אין תוקף: הקופץ פשוט נוחת במקומו וה'אוויר' מתפנה לאחר חלון הקפיצה.
+    board = make_board([
+        ["wP", ".", "."],
+        [".", ".", "."],
+        [".", ".", "."],
+    ])
+    engine = GameEngine(board)
+    engine.execute_command("jump 50 50")
+    engine.execute_command("wait 2000")      # חלף חלון הקפיצה (1000)
+    assert str(engine.board.grid[0][0]) == "wP"   # לא זז
+    assert engine.airborne == {}
 
 
 # --- print board ---

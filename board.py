@@ -26,6 +26,9 @@ class Board:
     def set_cell(self, row, col, piece):
         self.grid[row][col] = piece
 
+    def clear_cell(self, row, col):
+        self.grid[row][col] = EmptyCell()
+
     def select_piece(self, row, col):
         self.selected_piece = (row, col)
 

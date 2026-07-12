@@ -19,6 +19,7 @@ class GameEngine:
         self.board = board
         self.game_clock_ms = 0
         self.pending_moves = []  # מהלכים שבתהליך תנועה, ממתינים לזמן הגעתם
+        self.airborne = {}       # (row, col) -> land_ms: כלים שקופצים במקום ומוגנים עד הנחיתה
         self.game_over = False   # נדלק כאשר מלך נאכל; מרגע זה מהלכים מתעלמים
 
     def execute_command(self, command_str: str):
@@ -30,6 +31,8 @@ class GameEngine:
 
         if command_type == "click" and len(parts) == 3:
             self._handle_click(int(parts[1]), int(parts[2]))
+        elif command_type == "jump" and len(parts) == 3:
+            self._handle_jump(int(parts[1]), int(parts[2]))
         elif command_type == "wait" and len(parts) == 2:
             self._handle_wait(int(parts[1]))
         elif command_str.strip() == "print board":
@@ -85,6 +88,30 @@ class GameEngine:
         self.pending_moves.append(PendingMove(sel_row, sel_col, row, col, arrival_ms))
         self.board.selected_piece = None
 
+    def _handle_jump(self, x: int, y: int):
+        # קפיצה במקום (Dodge): הכלי נשאר בתאו ומוגן למשך JUMP_DURATION_MS.
+        # אינה כפופה לנעילת-הלוח של מהלכים - כדי שתוכל להתקיים בזמן שאויב בדרך.
+        if self.game_over:
+            return
+
+        row = y // config.CELL_SIZE
+        col = x // config.CELL_SIZE
+
+        if not self.board.is_within_bounds(row, col):
+            return
+        if self.board.is_empty(row, col):
+            return                                   # אין כלי לקפוץ (גם 'כלי שנאכל אינו יכול לקפוץ')
+        if self._is_in_flight(row, col):
+            return                                   # כלי שנמצא בתנועה אינו יכול לקפוץ
+        if (row, col) in self.airborne:
+            return                                   # כבר באוויר
+
+        self.airborne[(row, col)] = self.game_clock_ms + config.JUMP_DURATION_MS
+
+    def _is_in_flight(self, row, col) -> bool:
+        """האם קיים מהלך תלוי-ועומד שיצא מהתא הזה (כלומר הכלי נמצא בתנועה)."""
+        return any(m.from_row == row and m.from_col == col for m in self.pending_moves)
+
     def _travel_time(self, from_row, from_col, to_row, to_col) -> int:
         """זמן ההגעה נגזר ממספר התאים במסלול (מרחק צ'בישב) כפול MS_PER_CELL."""
         cells = max(abs(to_row - from_row), abs(to_col - from_col))
@@ -95,16 +122,40 @@ class GameEngine:
         still_pending = []
         for move in self.pending_moves:
             if move.arrival_ms <= self.game_clock_ms:
-                # קוראים את תא היעד לפני הדריסה: אם ישב שם מלך - המשחק הוכרע.
-                captured = self.board.get_cell(move.to_row, move.to_col)
-                self.board.move_piece(move.from_row, move.from_col,
-                                      move.to_row, move.to_col)
-                self._apply_promotion(move.to_row, move.to_col)
-                if isinstance(captured, King):
-                    self.game_over = True
+                self._resolve_move(move)
             else:
                 still_pending.append(move)
         self.pending_moves = still_pending
+
+    def _resolve_move(self, move):
+        # התנגשות עם קפיצה: אם ביעד יושב כלי אויב שעדיין באוויר ברגע ההגעה
+        # (arrival_ms <= זמן הנחיתה שלו) - הקופץ "נוחת על" המגיע ואוכל אותו:
+        # הכלי הקופץ נשאר במקומו, והתוקף המגיע מוסר מהלוח.
+        land_ms = self.airborne.get((move.to_row, move.to_col))
+        arriving_color = self.board.get_piece_color(move.from_row, move.from_col)
+        defender_color = self.board.get_piece_color(move.to_row, move.to_col)
+        if (land_ms is not None and move.arrival_ms <= land_ms
+                and defender_color is not None and arriving_color is not None
+                and defender_color != arriving_color):
+            arriving = self.board.get_cell(move.from_row, move.from_col)
+            self.board.clear_cell(move.from_row, move.from_col)
+            if isinstance(arriving, King):
+                self.game_over = True
+            return
+
+        # הכרעה רגילה (כולל המקרה שבו הקופץ כבר נחת לפני שהתוקף הגיע):
+        # קוראים את תא היעד לפני הדריסה - אם ישב שם מלך, המשחק הוכרע.
+        captured = self.board.get_cell(move.to_row, move.to_col)
+        self.board.move_piece(move.from_row, move.from_col,
+                              move.to_row, move.to_col)
+        self._apply_promotion(move.to_row, move.to_col)
+        if isinstance(captured, King):
+            self.game_over = True
+
+    def _expire_airborne(self):
+        """מסיר כלים שכבר נחתו (זמן הנחיתה חלף) מרשימת הקופצים."""
+        self.airborne = {cell: land for cell, land in self.airborne.items()
+                         if land >= self.game_clock_ms}
 
     def _apply_promotion(self, row, col):
         """מחליף כלי שהגיע ליעדו בכלי המוכתר שלו (חייל -> מלכה), אם יש."""
@@ -116,6 +167,7 @@ class GameEngine:
     def _handle_wait(self, ms: int):
         self.game_clock_ms += ms
         self._resolve_arrived_moves()
+        self._expire_airborne()
 
     def _handle_print_board(self):
         print(self.board)

@@ -39,8 +39,11 @@ print board
 | Command | Meaning |
 |---------|---------|
 | `click x y` | Click on pixel `(x, y)` — selects a piece, starts a move/capture, or clears the selection |
+| `jump x y` | The piece on cell `(x, y)` "jumps in place" (a dodge) — see below |
 | `wait <ms>` | Advances the game clock by milliseconds, completing any moves that have finished traveling |
 | `print board` | Prints the current board state |
+
+> **Jump / dodge:** `jump x y` makes a piece jump in place for 1000 ms without leaving its cell. While it is airborne it is protected: if an enemy piece finishes moving onto its cell *during* the jump, the jumper lands on the attacker and **captures it** (the attacker is removed, the jumper stays). If the jump ends *before* the attacker arrives, the attacker captures the jumper normally. A piece that is already moving, or an empty cell, cannot jump.
 
 > **Moves take time:** a move does not apply instantly. It takes `cells_traveled × MS_PER_CELL` (1000 ms per cell) to arrive; the piece stays on its origin cell until a `wait` advances the clock past its arrival time. A move never completes without a sufficient `wait`. **While a move is in progress the board is locked** — any further clicks are ignored, so only one piece moves at a time (no concurrent moves, including opposite colors) and a moving piece cannot be redirected. There is **no cooldown**: as soon as a piece arrives the board unlocks and it can move again immediately. **Capturing the enemy king ends the game** — once a move lands on a king, the game is over and all later move commands are ignored (`print board` still works).
 

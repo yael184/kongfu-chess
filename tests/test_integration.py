@@ -96,6 +96,54 @@ def test_opposite_colors_do_not_move_concurrently_in_common_route(capsys):
     assert expected in out
 
 
+def test_jump_dodges_and_eats_attacker(capsys):
+    # החייל קופץ; הצריח הסמוך מגיע בזמן הקפיצה ונאכל על ידי הקופץ.
+    input_data = (
+        "Board:\n"
+        "wP bR .\n"
+        ". . .\n"
+        ". . .\n"
+        "Commands:\n"
+        "jump 50 50\n"     # (0,0) קופץ
+        "click 150 50\n"   # בחירת הצריח (0,1)
+        "click 50 50\n"    # תקיפה אל (0,0), מרחק 1 -> הגעה ב-1000 (בזמן הקפיצה)
+        "wait 1000\n"
+        "print board\n"
+    )
+    main.main(input_stream=StringIO(input_data))
+    out = capsys.readouterr().out
+    expected = (
+        "wP . .\n"
+        ". . .\n"
+        ". . ."
+    )
+    assert expected in out
+
+
+def test_jump_lands_before_attacker_and_is_eaten(capsys):
+    # הצריח רחוק ומגיע אחרי שהקופץ נחת -> הצריח אוכל את החייל.
+    input_data = (
+        "Board:\n"
+        "wP . bR\n"
+        ". . .\n"
+        ". . .\n"
+        "Commands:\n"
+        "jump 50 50\n"     # (0,0) קופץ, נחיתה ב-1000
+        "click 250 50\n"   # בחירת הצריח (0,2)
+        "click 50 50\n"    # תקיפה אל (0,0), מרחק 2 -> הגעה ב-2000 (אחרי הנחיתה)
+        "wait 2000\n"
+        "print board\n"
+    )
+    main.main(input_stream=StringIO(input_data))
+    out = capsys.readouterr().out
+    expected = (
+        "bR . .\n"
+        ". . .\n"
+        ". . ."
+    )
+    assert expected in out
+
+
 def test_capturing_king_ends_game_and_freezes_board(capsys):
     # אכילת המלך מסיימת את המשחק; מהלכים שלאחר מכן מתעלמים והלוח קפוא.
     input_data = (
