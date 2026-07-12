@@ -1,0 +1,70 @@
+# tests/integration/test_realtime_game_flow.py
+# End-to-end vertical slice: GameEngine + real RuleEngine + real RealTimeArbiter over the model.
+from engine.game_engine import (
+    GameEngine, REASON_OK, REASON_GAME_OVER, REASON_MOTION_IN_PROGRESS,
+)
+from rules.rule_engine import REASON_ILLEGAL_PIECE_MOVE
+from model.board import Board
+from model.game_state import GameState
+from model.piece import Piece, Color, PieceKind, PieceState
+from model.position import Position
+from realtime.real_time_arbiter import RealTimeArbiter
+
+
+def build_game():
+    board = Board(3, 3)
+    rook = Piece(id="wR", color=Color.WHITE, kind=PieceKind.ROOK, cell=Position(0, 0))
+    king = Piece(id="bK", color=Color.BLACK, kind=PieceKind.KING, cell=Position(0, 2))
+    board.add_piece(rook)
+    board.add_piece(king)
+    state = GameState(board=board)
+    engine = GameEngine(state, RealTimeArbiter())
+    return engine, state, board, rook, king
+
+
+def test_move_takes_time_and_board_updates_only_on_arrival():
+    engine, state, board, rook, king = build_game()
+    assert engine.request_move(Position(0, 0), Position(0, 1)).reason == REASON_OK
+    engine.wait(500)                                   # mid-flight
+    assert board.piece_at(Position(0, 0)) is rook      # still logically on source
+    assert board.piece_at(Position(0, 1)) is None
+    engine.wait(500)                                   # total 1000 -> arrived
+    assert board.piece_at(Position(0, 0)) is None
+    assert board.piece_at(Position(0, 1)) is rook
+
+
+def test_second_move_rejected_while_a_motion_is_active():
+    engine, state, board, rook, king = build_game()
+    engine.request_move(Position(0, 0), Position(0, 1))
+    result = engine.request_move(Position(0, 0), Position(1, 0))
+    assert result.reason == REASON_MOTION_IN_PROGRESS
+
+
+def test_illegal_move_is_rejected_before_any_motion():
+    engine, state, board, rook, king = build_game()
+    result = engine.request_move(Position(0, 0), Position(1, 1))  # diagonal, illegal for a rook
+    assert result.reason == REASON_ILLEGAL_PIECE_MOVE
+    assert engine._arbiter.has_active_motion() is False
+
+
+def test_capturing_the_king_ends_the_game_and_freezes_moves():
+    engine, state, board, rook, king = build_game()
+    assert engine.request_move(Position(0, 0), Position(0, 2)).reason == REASON_OK  # 2 cells -> 2000ms
+    engine.wait(2000)
+    assert state.game_over is True
+    assert board.piece_at(Position(0, 2)) is rook
+    assert king.state == PieceState.CAPTURED
+    # further moves are rejected once the game is over
+    assert engine.request_move(Position(0, 2), Position(0, 1)).reason == REASON_GAME_OVER
+
+
+def test_snapshot_tracks_the_logical_board_across_time():
+    engine, state, board, rook, king = build_game()
+    engine.request_move(Position(0, 0), Position(0, 1))
+    before = engine.snapshot()
+    assert before.piece_at(Position(0, 0)) is rook   # before arrival
+    assert before.piece_at(Position(0, 1)) is None
+    engine.wait(1000)
+    after = engine.snapshot()
+    assert after.piece_at(Position(0, 0)) is None
+    assert after.piece_at(Position(0, 1)) is rook

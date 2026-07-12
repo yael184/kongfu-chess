@@ -1,60 +1,39 @@
 # main.py
 import sys
-from board import Board
-from engine import GameEngine
-from registry import create_piece_from_token
 
-def parse_input(txt: str):
-    """Parse a board+commands document into a Board and a list of command strings."""
-    if "Commands:" not in txt or "Board:" not in txt:
-        print("ERROR UNKNOWN_TOKEN")
-        sys.exit(0)
-        
-    board_part, commands_part = txt.split("Commands:")
-    board_raw = board_part.replace("Board:", "").strip()
-    
-    commands = [line.strip() for line in commands_part.strip().split("\n") if line.strip()]
-    raw_grid = [line.split() for line in board_raw.split("\n") if line.strip()]
-    
-    if not raw_grid:
-        print("ERROR UNKNOWN_TOKEN")
-        sys.exit(0)
+from engine.game_engine import GameEngine
+from input.controller import Controller
+from model.game_state import GameState
+from realtime.real_time_arbiter import RealTimeArbiter
+from text_io.board_parser import BoardParser, BoardParseError
+from text_io.board_printer import BoardPrinter
+from texttests.script_parser import ScriptParser, ScriptParseError
+from texttests.script_runner import ScriptRunner
 
-    # Ensure the board is rectangular (all rows share the same width).
-    expected_width = len(raw_grid[0])
-    for row in raw_grid:
-        if len(row) != expected_width:
-            print("ERROR ROW_WIDTH_MISMATCH")
-            sys.exit(0)
 
-    # Convert each token via the registry factory.
-    grid = []
-    for row in raw_grid:
-        grid_row = []
-        for cell in row:
-            piece = create_piece_from_token(cell)
-            if piece is None:
-                print("ERROR UNKNOWN_TOKEN")
-                sys.exit(0)
-            grid_row.append(piece)
-        grid.append(grid_row)
+def build_engine(board):
+    """Wire the full stack around a parsed board: state + arbiter + engine."""
+    return GameEngine(GameState(board=board), RealTimeArbiter())
 
-    return Board(grid), commands
 
 def main(input_stream=None):
-    """Read a document from input_stream (defaults to stdin), build the engine, and run every command."""
+    """Read a Board:/Commands: document, build the game, and run every command."""
     if input_stream is None:
         input_stream = sys.stdin
-    txt = input_stream.read()
-    board, commands = parse_input(txt)
-    
-    if not board or not commands:
-        print("ERROR UNKNOWN_TOKEN")
-        return
-        
-    engine = GameEngine(board)
-    for command in commands:
-        engine.execute_command(command)
+    text = input_stream.read()
+
+    try:
+        script = ScriptParser().parse(text)
+        board = BoardParser().parse(script.board_text)
+    except (ScriptParseError, BoardParseError) as error:
+        print(f"ERROR {error.code}")
+        sys.exit(0)
+
+    engine = build_engine(board)
+    controller = Controller(engine)
+    runner = ScriptRunner(engine, controller, BoardPrinter())
+    runner.run(script.commands)
+
 
 if __name__ == "__main__":
     main()

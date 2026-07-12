@@ -2,7 +2,7 @@
 
 A command-driven chess engine in Python. You supply a starting board and a list of commands (clicks, waits, prints); the engine processes them and updates the board state.
 
-> **Note:** This is an early, simplified implementation. The full product vision (a **real-time**, no-turns game with move travel time, cooldowns, and scoring) is described in [kong_fu_chess_requirements.md](kong_fu_chess_requirements.md). Moves now take **travel time** (a piece is shown at its origin until it has traveled far enough), but cooldowns, scoring, and networking are not implemented yet.
+> **Note:** This is a layered, simplified implementation. The full product vision (a **real-time**, no-turns game with move travel time, cooldowns, and scoring) is described in [kong_fu_chess_requirements.md](kong_fu_chess_requirements.md). Moves take **travel time** (a piece is shown at its origin until it has traveled far enough); jump/dodge, pawn two-step and promotion are implemented, and you win by capturing the enemy king — but post-move cooldowns, scoring, and networking are not implemented yet.
 
 ## Installation
 
@@ -38,37 +38,57 @@ print board
 
 | Command | Meaning |
 |---------|---------|
-| `click x y` | Click on pixel `(x, y)` — selects a piece, starts a move/capture, or clears the selection |
-| `jump x y` | The piece on cell `(x, y)` "jumps in place" (a dodge) — see below |
-| `wait <ms>` | Advances the game clock by milliseconds, completing any moves that have finished traveling |
+| `click x y` | Click on pixel `(x, y)` — selects a piece, switches selection, starts a move/capture, or clears the selection |
+| `jump x y` | The piece on cell `(x, y)` jumps in place (a dodge) — see below |
+| `wait <ms>` | Advances the game clock by milliseconds, completing any move that has finished traveling |
 | `print board` | Prints the current board state |
 
-> **Jump / dodge:** `jump x y` makes a piece jump in place for 1000 ms without leaving its cell. While it is airborne it is protected: if an enemy piece finishes moving onto its cell *during* the jump, the jumper lands on the attacker and **captures it** (the attacker is removed, the jumper stays). If the jump ends *before* the attacker arrives, the attacker captures the jumper normally. A piece that is already moving, or an empty cell, cannot jump.
+> **Moves take time:** a move does not apply instantly. It takes `cells_traveled × MS_PER_CELL` (1000 ms per cell; a diagonal square counts as one cell) to arrive; the piece stays on its origin cell until a `wait` advances the clock past its arrival time. A move never completes without a sufficient `wait`. **While a move is in progress a second move is rejected** — only one piece moves at a time. There is **no cooldown**: as soon as a piece arrives it can move again. **Capturing the enemy king ends the game** — once a move lands on a king, the game is over and all later moves are ignored (`print board` still works).
 
-> **Moves take time:** a move does not apply instantly. It takes `cells_traveled × MS_PER_CELL` (1000 ms per cell) to arrive; the piece stays on its origin cell until a `wait` advances the clock past its arrival time. A move never completes without a sufficient `wait`. **While a move is in progress the board is locked** — any further clicks are ignored, so only one piece moves at a time (no concurrent moves, including opposite colors) and a moving piece cannot be redirected. There is **no cooldown**: as soon as a piece arrives the board unlocks and it can move again immediately. **Capturing the enemy king ends the game** — once a move lands on a king, the game is over and all later move commands are ignored (`print board` still works).
+> **Jump / dodge:** `jump x y` makes the piece on that cell jump in place for `JUMP_DURATION_MS` (1000 ms) without leaving its cell — it does not lock the board. While airborne it is protected: if an enemy finishes moving onto its cell *during* the jump, the jumper captures the attacker (attacker removed, jumper stays); if the jump ends first, the attacker captures normally. A piece already moving, or an empty cell, cannot jump.
 
-> **Heads up:** Click coordinates are `(x, y)` in pixels, while the board is indexed `[row][col]`. The conversion is `row = y // CELL_SIZE`, `col = x // CELL_SIZE` (cell size = 100).
+> **Pawns:** move one step forward into an empty cell, or a **two-step first move** from the start rank; capture one diagonal step forward; a pawn reaching the last rank **promotes to a queen** on arrival. (No en passant.)
+
+> **Heads up:** Click coordinates are `(x, y)` in pixels, while the board is indexed by `(row, col)`. The conversion is `row = y // CELL_SIZE`, `col = x // CELL_SIZE` (cell size = 100).
 
 ## Code structure
 
-| File | Responsibility |
+The engine is layered; dependencies point inward toward `model/`.
+
+| Layer | Responsibility |
 |------|----------------|
-| [pieces.py](pieces.py) | `Piece` base class plus one subclass per piece type; each defines `is_valid_move`. `EmptyCell` is a Null Object |
-| [registry.py](registry.py) | Factory that turns an input token into a piece object — the **extension point** for adding new pieces |
-| [board.py](board.py) | `Board` — holds the grid and provides bounds-safe cell access |
-| [engine.py](engine.py) | `GameEngine` — parses and runs commands against the board |
-| [main.py](main.py) | Input parsing (`parse_input`) and entry point (`main`) |
-| [config.py](config.py) | Shared constants (`CELL_SIZE`, `MS_PER_CELL`, color names, empty token) |
+| [model/](model/) | Domain core: `Position` (value object), `Piece` (entity + `Color`/`PieceKind`/`PieceState` enums), `Board` (occupancy, bounds, `move_piece`), `GameState` |
+| [rules/](rules/) | `piece_rules.py` (per-kind `legal_destinations` + `promotion_kind`, the **extension point** for new pieces) and `RuleEngine` (read-only move validation) |
+| [realtime/](realtime/) | `Motion` and `RealTimeArbiter` — movement over time; the board changes only on arrival |
+| [engine/game_engine.py](engine/game_engine.py) | `GameEngine` — the public command boundary (`request_move`, `wait`, `snapshot`) |
+| [input/](input/) | `BoardMapper` (pixels → cells) and `Controller` (click selection → `request_move`) |
+| [text_io/](text_io/) | `PieceFactory` (+ token codec), `BoardParser` (text → board), `BoardPrinter` (board/snapshot → text) |
+| [texttests/](texttests/) | `ScriptParser` (document → board + commands) and `ScriptRunner` (dispatch commands) |
+| [main.py](main.py) | Wires the stack and runs a document from stdin |
+| [config.py](config.py) / [config.toml](config.toml) | Tunables (`cell_size`, `ms_per_cell`, empty token) loaded from an external file |
+
+## Configuration
+
+Game constants live in [config.toml](config.toml), not in code. Edit the file to change the
+cell size, travel time per cell, or the empty-cell token, then run again — no code changes needed:
+
+```toml
+[timing]
+ms_per_cell = 1000       # milliseconds to cross one cell
+jump_duration_ms = 1000  # how long a jump protects a piece
+```
+
+[config.py](config.py) reads this file on import (via the standard-library `tomllib`) and exposes
+the values as `config.CELL_SIZE`, `config.MS_PER_CELL`, `config.JUMP_DURATION_MS`,
+`config.EMPTY_TOKEN`. Call `config.load()` to re-read the file at runtime after editing it.
 
 ## Tests
 
-The test suite lives in [tests/](tests/), split by module:
+The suite lives in [tests/](tests/): `tests/unit/` (per-layer) and `tests/integration/` (end-to-end).
 
 ```bash
 pytest                                      # run all tests
 pytest --cov=. --cov-report=term-missing    # with a coverage report
-pytest tests/test_engine.py                 # a single file
+pytest tests/unit/test_rule_engine.py       # a single file
 pytest -k pawn                              # by expression
 ```
-
-`pytest.ini` sets `testpaths = tests`, so running `pytest` collects only `tests/`. The legacy `test_game.py` is kept for reference and is not collected by default (run it explicitly with `pytest test_game.py`).

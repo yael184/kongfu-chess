@@ -1,0 +1,17 @@
+# config.toml
+# External game configuration. Edit these values to change the game's behavior
+# without touching any code, then run again (or reload at runtime via config.load()).
+
+[board]
+# Pixel size of a single cell; a click at (x, y) maps to cell (y // cell_size, x // cell_size).
+cell_size = 100
+
+[timing]
+# Milliseconds it takes a piece to cross one cell. A move's arrival time = cells * ms_per_cell.
+ms_per_cell = 1000
+# Duration of a "jump in place" (dodge); while airborne a piece is protected.
+jump_duration_ms = 1000
+
+[tokens]
+# Board token that represents an empty cell.
+empty = "."
