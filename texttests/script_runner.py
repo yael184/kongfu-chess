@@ -5,10 +5,12 @@ class ScriptRunner:
     """Executes text-test commands against the game through the public boundaries.
 
     Commands:
-      - `click x y`  -> Controller.handle_click (pixel coords; selection + request_move)
-      - `jump x y`   -> Controller.handle_jump (pixel coords; dodge in place)
-      - `wait <ms>`  -> GameEngine.wait (advance simulated time)
-      - `print board` -> render the current snapshot via the printer
+
+      - ``click x y``   -> Controller.handle_click (pixel coords; selection + request_move)
+      - ``jump x y``    -> Controller.handle_jump (pixel coords; dodge in place)
+      - ``wait <ms>``   -> GameEngine.wait (advance simulated time)
+      - ``print board`` -> render the current snapshot via the printer
+
     An empty line is a no-op; anything else prints an unknown-command error.
     """
 

@@ -5,3 +5,6 @@ __pycache__/
 .coverage
 
 memory/
+
+# Sphinx documentation build output
+docs/build/
