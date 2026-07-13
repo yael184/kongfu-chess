@@ -1,5 +1,4 @@
 # input/controller.py
-from input.board_mapper import BoardMapper
 
 
 class Controller:
@@ -7,7 +6,7 @@ class Controller:
 
     It maps pixels to cells (via BoardMapper), tracks the selected source cell, and on the
     second click delegates to GameEngine.request_move. It never calls Board.move_piece and
-    never calls RuleEngine directly; bounds and occupancy are read from GameEngine.snapshot().
+    never consults the rules; bounds and occupancy are read from GameEngine.snapshot().
 
     Selection policy:
       - First click: ignore clicks outside the board and clicks on empty cells; otherwise select.
@@ -16,9 +15,9 @@ class Controller:
       - Second click, outside the board: cancel the selection and send no command.
     """
 
-    def __init__(self, engine, mapper=None):
+    def __init__(self, engine, mapper):
         self._engine = engine
-        self._mapper = mapper if mapper is not None else BoardMapper()
+        self._mapper = mapper
         self._selected = None
 
     @property
@@ -50,9 +49,8 @@ class Controller:
             self._selected = None             # outside-board click cancels the selection, no command
             return None
 
-        target = snapshot.piece_at(cell)
         selected_piece = snapshot.piece_at(self._selected)
-        if target is not None and selected_piece is not None and target.color == selected_piece.color:
+        if selected_piece is not None and selected_piece.is_ally_of(snapshot.piece_at(cell)):
             self._selected = cell             # clicking a same-color piece switches the selection
             return None
 

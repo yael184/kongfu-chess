@@ -1,8 +1,6 @@
 # rules/rule_engine.py
 from dataclasses import dataclass
 
-from rules.piece_rules import rule_for
-
 # Stable, machine-readable validation reasons (asserted by unit tests, not by the DSL).
 REASON_OK = "ok"
 REASON_OUTSIDE_BOARD = "outside_board"
@@ -29,9 +27,15 @@ class MoveValidation:
 class RuleEngine:
     """Read-only rule validator: given a source and destination cell, is the move legal now?
 
-    It inspects board state and returns a MoveValidation; it never moves pieces, removes
-    captures, starts motions, or updates game state. Game-over is handled by GameEngine, not here.
+    It inspects board state and returns a MoveValidation; it never moves pieces, removes captures,
+    starts motions, or updates game state. Game-over is handled elsewhere, not here.
+
+    The piece rules are injected as a registry, so which pieces exist and how they move is not this
+    class's business — it only knows that every piece has *some* rule.
     """
+
+    def __init__(self, rules: "PieceRuleRegistry"):
+        self._rules = rules
 
     def validate_move(self, board, source, destination):
         """Validate a move from source to destination against the board and piece movement rules."""
@@ -42,11 +46,10 @@ class RuleEngine:
         if piece is None:
             return MoveValidation.rejected(REASON_EMPTY_SOURCE)
 
-        target = board.piece_at(destination)
-        if target is not None and target.color == piece.color:
+        if piece.is_ally_of(board.piece_at(destination)):
             return MoveValidation.rejected(REASON_FRIENDLY_DESTINATION)
 
-        if destination not in rule_for(piece.kind).legal_destinations(board, piece):
+        if destination not in self._rules.rule_for(piece.kind).legal_destinations(board, piece):
             return MoveValidation.rejected(REASON_ILLEGAL_PIECE_MOVE)
 
         return MoveValidation.ok()

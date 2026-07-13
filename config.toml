@@ -15,3 +15,56 @@ jump_duration_ms = 1000
 [tokens]
 # Board token that represents an empty cell.
 empty = "."
+
+# --- Pieces -------------------------------------------------------------------------------------
+# The pieces in play. Everything about a piece is here: its name, the letter it is spelled with in
+# the text format, how it moves, and whether taking it wins the game.
+#
+# ADDING A PIECE: add a block below. If it moves by a pattern that already exists, that is the
+# entire change — no code anywhere. Only a genuinely new *pattern* needs code, and only in rules/
+# (a PieceRule subclass plus an entry in rules/rule_factory.py's MOVEMENT_BUILDERS).
+#
+#   movement = "slide"     travels along `directions` until blocked  (rook, bishop, queen)
+#   movement = "leap"      jumps to fixed `offsets`, ignoring blockers  (knight, king)
+#   movement = "combined"  both: `directions` and `offsets` together
+#   movement = "pawn"      the pawn's forward/two-step/diagonal-capture rule
+#
+# Optional: promotes_to = "<piece name>"   what it becomes on reaching the far edge
+#           victory_on_capture = true      capturing it ends the game
+
+[[pieces]]
+name = "rook"
+symbol = "R"
+movement = "slide"
+directions = [[0, 1], [0, -1], [1, 0], [-1, 0]]
+
+[[pieces]]
+name = "bishop"
+symbol = "B"
+movement = "slide"
+directions = [[1, 1], [1, -1], [-1, 1], [-1, -1]]
+
+[[pieces]]
+name = "queen"
+symbol = "Q"
+movement = "slide"
+directions = [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]
+
+[[pieces]]
+name = "knight"
+symbol = "N"
+movement = "leap"
+offsets = [[2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2]]
+
+[[pieces]]
+name = "king"
+symbol = "K"
+movement = "leap"
+offsets = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]]
+victory_on_capture = true
+
+[[pieces]]
+name = "pawn"
+symbol = "P"
+movement = "pawn"
+promotes_to = "queen"

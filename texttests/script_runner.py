@@ -1,41 +1,40 @@
 # texttests/script_runner.py
+from texttests.commands import UnknownCommandError
 
 
 class ScriptRunner:
-    """Executes text-test commands against the game through the public boundaries.
+    """Executes text-test commands by dispatching each line to an injected command table.
 
-    Commands:
+    The table maps a command name to a handler taking the line's remaining arguments; it is built
+    in composition/app_factory (see texttests/commands.py for the handlers). The runner therefore
+    knows no command by name: adding `undo` or `speed 2` is a new entry in that table, not an edit
+    here.
 
-      - ``click x y``   -> Controller.handle_click (pixel coords; selection + request_move)
-      - ``jump x y``    -> Controller.handle_jump (pixel coords; dodge in place)
-      - ``wait <ms>``   -> GameEngine.wait (advance simulated time)
-      - ``print board`` -> render the current snapshot via the printer
-
-    An empty line is a no-op; anything else prints an unknown-command error.
+    An empty line is a no-op. A line naming no known command — or naming one with arguments that
+    do not fit it — prints an unknown-command error.
     """
 
-    def __init__(self, engine, controller, printer):
-        self._engine = engine
-        self._controller = controller
-        self._printer = printer
+    def __init__(self, commands):
+        self._commands = commands
 
-    def run(self, commands):
-        for command in commands:
-            self._execute(command)
+    def run(self, lines):
+        for line in lines:
+            self._execute(line)
 
-    def _execute(self, command):
-        parts = command.split()
+    def _execute(self, line):
+        parts = line.split()
         if not parts:
             return
 
-        name = parts[0]
-        if name == "click" and len(parts) == 3:
-            self._controller.handle_click(int(parts[1]), int(parts[2]))
-        elif name == "jump" and len(parts) == 3:
-            self._controller.handle_jump(int(parts[1]), int(parts[2]))
-        elif name == "wait" and len(parts) == 2:
-            self._engine.wait(int(parts[1]))
-        elif command.strip() == "print board":
-            print(self._printer.to_text(self._engine.snapshot()))
-        else:
-            print(f"ERROR: Unknown command '{command}'")
+        handler = self._commands.get(parts[0])
+        if handler is None:
+            self._report_unknown(line)
+            return
+
+        try:
+            handler(parts[1:])
+        except UnknownCommandError:
+            self._report_unknown(line)
+
+    def _report_unknown(self, line):
+        print(f"ERROR: Unknown command '{line}'")

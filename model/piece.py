@@ -11,14 +11,31 @@ class Color(enum.Enum):
     BLACK = "black"
 
 
-class PieceKind(enum.Enum):
-    """The type of chess piece. Movement rules for each kind live in the rules/ layer, not here."""
-    KING = "king"
-    QUEEN = "queen"
-    ROOK = "rook"
-    BISHOP = "bishop"
-    KNIGHT = "knight"
-    PAWN = "pawn"
+@dataclass(frozen=True)
+class PieceKind:
+    """The type of a piece — a value object, deliberately *not* an enum.
+
+    An enum is a closed set, and a closed set here would mean the model gets an edit every time
+    someone invents a piece. A kind is just a name: `PieceKind("dragon")` is as valid as the six
+    below, and compares and hashes by value like any other. Which kinds actually exist in a game is
+    decided by configuration and assembled at the composition root, not fixed here.
+
+    Movement rules for each kind live in the rules/ layer; the model never knows how anything moves.
+    """
+    name: str
+
+    def __str__(self):
+        return self.name
+
+
+# The standard chess kinds, as a convenience for code and tests that mean the usual game.
+# This is emphatically NOT an exhaustive list — it is six well-known values, not the vocabulary.
+PieceKind.KING = PieceKind("king")
+PieceKind.QUEEN = PieceKind("queen")
+PieceKind.ROOK = PieceKind("rook")
+PieceKind.BISHOP = PieceKind("bishop")
+PieceKind.KNIGHT = PieceKind("knight")
+PieceKind.PAWN = PieceKind("pawn")
 
 
 class PieceState(enum.Enum):
@@ -48,3 +65,11 @@ class Piece:
     kind: PieceKind
     cell: Position
     state: PieceState = PieceState.IDLE
+
+    def is_ally_of(self, other) -> bool:
+        """Whether `other` is a piece on the same side. An empty cell (None) is never an ally."""
+        return other is not None and other.color == self.color
+
+    def is_enemy_of(self, other) -> bool:
+        """Whether `other` is a piece on the opposing side. An empty cell (None) is never an enemy."""
+        return other is not None and other.color != self.color

@@ -30,7 +30,7 @@ def test_piece_has_readable_repr():
     piece = Piece(id="p1", color=Color.WHITE, kind=PieceKind.QUEEN, cell=Position(0, 0))
     text = repr(piece)
     assert "p1" in text
-    assert "QUEEN" in text
+    assert "queen" in text
 
 
 def test_piece_exposes_only_lifecycle_fields():

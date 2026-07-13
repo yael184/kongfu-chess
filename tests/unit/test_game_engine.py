@@ -9,7 +9,9 @@ from model.board import Board
 from model.game_state import GameState
 from model.piece import Piece, Color, PieceKind
 from model.position import Position
-from rules.rule_engine import REASON_ILLEGAL_PIECE_MOVE, REASON_FRIENDLY_DESTINATION
+import config
+from rules.rule_factory import build_registry
+from rules.rule_engine import RuleEngine, REASON_ILLEGAL_PIECE_MOVE, REASON_FRIENDLY_DESTINATION
 
 
 def pc(piece_id, color, kind, row, col):
@@ -26,9 +28,9 @@ def state_with(width, height, *pieces, game_over=False):
 class FakeArbiter:
     """Test double for RealTimeArbiter — records interactions and returns a canned outcome."""
 
-    def __init__(self, active=False, king_captured=False):
+    def __init__(self, active=False, game_over=False):
         self._active = active
-        self._king_captured = king_captured
+        self._game_over = game_over
         self.started = []
         self.advanced = None
 
@@ -40,7 +42,7 @@ class FakeArbiter:
 
     def advance_time(self, ms):
         self.advanced = ms
-        return types.SimpleNamespace(king_captured=self._king_captured)
+        return types.SimpleNamespace(game_over=self._game_over)
 
 
 class ExplodingRuleEngine:
@@ -54,7 +56,7 @@ class ExplodingRuleEngine:
 def test_request_move_rejected_when_game_over_without_calling_rules():
     state = state_with(3, 3, pc("r", Color.WHITE, PieceKind.ROOK, 0, 0), game_over=True)
     arbiter = FakeArbiter()
-    engine = GameEngine(state, arbiter, rule_engine=ExplodingRuleEngine())
+    engine = GameEngine(state, arbiter, ExplodingRuleEngine())
     result = engine.request_move(Position(0, 0), Position(0, 2))
     assert result == MoveResult(False, REASON_GAME_OVER)
     assert arbiter.started == []
@@ -63,7 +65,7 @@ def test_request_move_rejected_when_game_over_without_calling_rules():
 def test_request_move_rejected_when_a_motion_is_in_progress():
     state = state_with(3, 3, pc("r", Color.WHITE, PieceKind.ROOK, 0, 0))
     arbiter = FakeArbiter(active=True)
-    engine = GameEngine(state, arbiter, rule_engine=ExplodingRuleEngine())
+    engine = GameEngine(state, arbiter, ExplodingRuleEngine())
     result = engine.request_move(Position(0, 0), Position(0, 2))
     assert result == MoveResult(False, REASON_MOTION_IN_PROGRESS)
     assert arbiter.started == []
@@ -72,7 +74,7 @@ def test_request_move_rejected_when_a_motion_is_in_progress():
 def test_game_over_guard_takes_precedence_over_motion_guard():
     state = state_with(3, 3, pc("r", Color.WHITE, PieceKind.ROOK, 0, 0), game_over=True)
     arbiter = FakeArbiter(active=True)
-    engine = GameEngine(state, arbiter, rule_engine=ExplodingRuleEngine())
+    engine = GameEngine(state, arbiter, ExplodingRuleEngine())
     assert engine.request_move(Position(0, 0), Position(0, 2)).reason == REASON_GAME_OVER
 
 
@@ -80,7 +82,7 @@ def test_game_over_guard_takes_precedence_over_motion_guard():
 def test_valid_move_is_accepted_and_starts_a_motion():
     state = state_with(3, 3, pc("r", Color.WHITE, PieceKind.ROOK, 0, 0))
     arbiter = FakeArbiter()
-    engine = GameEngine(state, arbiter)  # real RuleEngine
+    engine = GameEngine(state, arbiter, RuleEngine(build_registry(config.load().pieces)))
     result = engine.request_move(Position(0, 0), Position(0, 2))
     assert result == MoveResult(True, REASON_OK)
     assert arbiter.started == [(Position(0, 0), Position(0, 2))]
@@ -89,7 +91,7 @@ def test_valid_move_is_accepted_and_starts_a_motion():
 def test_illegal_move_reason_is_copied_and_no_motion_starts():
     state = state_with(3, 3, pc("r", Color.WHITE, PieceKind.ROOK, 0, 0))
     arbiter = FakeArbiter()
-    engine = GameEngine(state, arbiter)
+    engine = GameEngine(state, arbiter, RuleEngine(build_registry(config.load().pieces)))
     result = engine.request_move(Position(0, 0), Position(2, 2))  # diagonal, illegal for a rook
     assert result == MoveResult(False, REASON_ILLEGAL_PIECE_MOVE)
     assert arbiter.started == []
@@ -101,7 +103,7 @@ def test_friendly_destination_reason_is_copied():
         pc("r", Color.WHITE, PieceKind.ROOK, 0, 0),
         pc("f", Color.WHITE, PieceKind.PAWN, 0, 1),
     )
-    engine = GameEngine(state, FakeArbiter())
+    engine = GameEngine(state, FakeArbiter(), RuleEngine(build_registry(config.load().pieces)))
     assert engine.request_move(Position(0, 0), Position(0, 1)).reason == REASON_FRIENDLY_DESTINATION
 
 
@@ -109,20 +111,20 @@ def test_friendly_destination_reason_is_copied():
 def test_wait_delegates_to_arbiter_advance_time():
     state = state_with(3, 3)
     arbiter = FakeArbiter()
-    GameEngine(state, arbiter).wait(1000)
+    GameEngine(state, arbiter, RuleEngine(build_registry(config.load().pieces))).wait(1000)
     assert arbiter.advanced == 1000
 
 
-def test_king_capture_during_wait_sets_game_over():
+def test_arbiter_reporting_game_over_during_wait_sets_game_over():
     state = state_with(3, 3)
-    engine = GameEngine(state, FakeArbiter(king_captured=True))
+    engine = GameEngine(state, FakeArbiter(game_over=True), RuleEngine(build_registry(config.load().pieces)))
     engine.wait(1000)
     assert state.game_over is True
 
 
-def test_wait_without_king_capture_leaves_game_running():
+def test_wait_without_a_reported_end_leaves_game_running():
     state = state_with(3, 3)
-    engine = GameEngine(state, FakeArbiter(king_captured=False))
+    engine = GameEngine(state, FakeArbiter(game_over=False), RuleEngine(build_registry(config.load().pieces)))
     engine.wait(1000)
     assert state.game_over is False
 
@@ -131,7 +133,7 @@ def test_wait_without_king_capture_leaves_game_running():
 def test_snapshot_exposes_read_only_board_and_flag():
     rook = pc("r", Color.WHITE, PieceKind.ROOK, 0, 0)
     state = state_with(3, 2, rook)
-    snapshot = GameEngine(state, FakeArbiter()).snapshot()
+    snapshot = GameEngine(state, FakeArbiter(), RuleEngine(build_registry(config.load().pieces))).snapshot()
     assert isinstance(snapshot, GameSnapshot)
     assert (snapshot.width, snapshot.height) == (3, 2)
     assert snapshot.piece_at(Position(0, 0)) is rook
@@ -142,6 +144,6 @@ def test_snapshot_exposes_read_only_board_and_flag():
 def test_snapshot_is_decoupled_from_later_board_changes():
     rook = pc("r", Color.WHITE, PieceKind.ROOK, 0, 0)
     state = state_with(3, 3, rook)
-    snapshot = GameEngine(state, FakeArbiter()).snapshot()
+    snapshot = GameEngine(state, FakeArbiter(), RuleEngine(build_registry(config.load().pieces))).snapshot()
     state.board.remove_piece(rook)
     assert snapshot.piece_at(Position(0, 0)) is rook  # snapshot kept the placement

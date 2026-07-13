@@ -1,12 +1,14 @@
 # tests/unit/test_controller.py
 from engine.game_engine import GameSnapshot, MoveResult, REASON_OK
+from input.board_mapper import BoardMapper
 from input.controller import Controller
+from model.board import BoardSnapshot
 from model.piece import Piece, Color, PieceKind
 from model.position import Position
 
 
 def snapshot(width, height, placements=None, game_over=False):
-    return GameSnapshot(width, height, placements or {}, game_over)
+    return GameSnapshot(BoardSnapshot(width, height, placements or {}), game_over)
 
 
 def rook_at(row, col):
@@ -36,7 +38,7 @@ class FakeEngine:
 # --- first click ---
 def test_first_click_on_empty_cell_is_ignored():
     engine = FakeEngine(snapshot(3, 3))
-    controller = Controller(engine)
+    controller = Controller(engine, BoardMapper(cell_size=100))
     controller.handle_click(50, 50)  # (0,0), empty
     assert controller.selected is None
     assert engine.requests == []
@@ -44,7 +46,7 @@ def test_first_click_on_empty_cell_is_ignored():
 
 def test_first_click_outside_board_is_ignored_when_no_selection():
     engine = FakeEngine(snapshot(3, 3))
-    controller = Controller(engine)
+    controller = Controller(engine, BoardMapper(cell_size=100))
     controller.handle_click(500, 500)  # (5,5), outside
     assert controller.selected is None
     assert engine.requests == []
@@ -52,7 +54,7 @@ def test_first_click_outside_board_is_ignored_when_no_selection():
 
 def test_first_click_on_a_piece_selects_it():
     engine = FakeEngine(snapshot(3, 3, {Position(0, 0): rook_at(0, 0)}))
-    controller = Controller(engine)
+    controller = Controller(engine, BoardMapper(cell_size=100))
     controller.handle_click(50, 50)  # (0,0), occupied
     assert controller.selected == Position(0, 0)
     assert engine.requests == []
@@ -61,7 +63,7 @@ def test_first_click_on_a_piece_selects_it():
 # --- second click ---
 def test_second_in_board_click_requests_move_and_clears_selection():
     engine = FakeEngine(snapshot(3, 3, {Position(0, 0): rook_at(0, 0)}))
-    controller = Controller(engine)
+    controller = Controller(engine, BoardMapper(cell_size=100))
     controller.handle_click(50, 50)             # select (0,0)
     result = controller.handle_click(250, 50)   # (0,2)
     assert engine.requests == [(Position(0, 0), Position(0, 2))]
@@ -74,7 +76,7 @@ def test_selection_is_cleared_even_when_the_move_is_illegal():
         snapshot(3, 3, {Position(0, 0): rook_at(0, 0)}),
         result=MoveResult.rejected("illegal_piece_move"),
     )
-    controller = Controller(engine)
+    controller = Controller(engine, BoardMapper(cell_size=100))
     controller.handle_click(50, 50)      # select (0,0)
     controller.handle_click(150, 150)    # (1,1) -> illegal for a rook, still sends + clears
     assert engine.requests == [(Position(0, 0), Position(1, 1))]
@@ -83,7 +85,7 @@ def test_selection_is_cleared_even_when_the_move_is_illegal():
 
 def test_outside_board_second_click_cancels_selection_without_a_command():
     engine = FakeEngine(snapshot(3, 3, {Position(0, 0): rook_at(0, 0)}))
-    controller = Controller(engine)
+    controller = Controller(engine, BoardMapper(cell_size=100))
     controller.handle_click(50, 50)      # select (0,0)
     controller.handle_click(500, 500)    # outside -> cancel, no command
     assert controller.selected is None
@@ -93,7 +95,7 @@ def test_outside_board_second_click_cancels_selection_without_a_command():
 def test_a_new_first_click_starts_a_fresh_selection_after_a_move():
     placements = {Position(0, 0): rook_at(0, 0), Position(2, 2): rook_at(2, 2)}
     engine = FakeEngine(snapshot(3, 3, placements))
-    controller = Controller(engine)
+    controller = Controller(engine, BoardMapper(cell_size=100))
     controller.handle_click(50, 50)      # select (0,0)
     controller.handle_click(50, 150)     # (1,0) -> move + clear
     controller.handle_click(250, 250)    # (2,2) -> new first click selects
@@ -104,7 +106,7 @@ def test_a_new_first_click_starts_a_fresh_selection_after_a_move():
 def test_clicking_a_same_color_piece_switches_the_selection():
     placements = {Position(0, 0): rook_at(0, 0), Position(0, 2): rook_at(0, 2)}
     engine = FakeEngine(snapshot(3, 3, placements))
-    controller = Controller(engine)
+    controller = Controller(engine, BoardMapper(cell_size=100))
     controller.handle_click(50, 50)      # select (0,0)
     controller.handle_click(250, 50)     # (0,2) is same-color -> switch selection, no move
     assert controller.selected == Position(0, 2)
@@ -114,6 +116,6 @@ def test_clicking_a_same_color_piece_switches_the_selection():
 # --- jump ---
 def test_handle_jump_maps_pixels_and_delegates_to_request_jump():
     engine = FakeEngine(snapshot(3, 3))
-    controller = Controller(engine)
+    controller = Controller(engine, BoardMapper(cell_size=100))
     controller.handle_jump(150, 250)     # (row 2, col 1)
     assert engine.jumps == [Position(2, 1)]

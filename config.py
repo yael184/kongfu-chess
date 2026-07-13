@@ -1,8 +1,13 @@
 # config.py
-# Access layer for the game configuration. The values themselves live in an external,
-# non-code file (config.toml) so they can be changed without editing code. The rest of the
-# codebase keeps using config.CELL_SIZE, config.MS_PER_CELL, etc. exactly as before.
+# Access layer for the game configuration. The values themselves live in an external, non-code
+# file (config.toml) so they can be changed without editing code.
+#
+# load() returns an immutable GameConfig rather than populating module globals: a configuration is
+# a value that gets *injected* into the objects that need it (by composition/app_factory), not an
+# ambient global that any layer can reach into. That is what lets a test — or a second game running
+# in the same process — use different settings without disturbing anyone else.
 import tomllib
+from dataclasses import dataclass
 from pathlib import Path
 
 # The external config file, resolved relative to this module so it works regardless of the
@@ -10,24 +15,58 @@ from pathlib import Path
 DEFAULT_CONFIG_PATH = Path(__file__).with_name("config.toml")
 
 
-def load(path=None):
-    """Read the TOML config file and (re)populate this module's constants.
+@dataclass(frozen=True)
+class PieceSpec:
+    """One piece as configuration: what it is called, how it is spelled, how it moves.
 
-    Called once on import. Call again to reload after the file has been edited at runtime;
-    because every other module reads the values as config.<NAME>, the new values take effect
-    immediately everywhere.
+    This is plain data — it names a movement *pattern* rather than describing one, and knows
+    nothing about the rule classes that read it (rules/rule_factory.py turns a spec into a rule).
+    Adding a piece is adding one of these.
     """
+    name: str
+    symbol: str
+    movement: str
+    directions: tuple = ()
+    offsets: tuple = ()
+    promotes_to: str = None
+    victory_on_capture: bool = False
+
+
+@dataclass(frozen=True)
+class GameConfig:
+    """The game's tunables, loaded from config.toml.
+
+    Add a new tunable here and in config.toml — never as a literal in business logic.
+    """
+    cell_size: int
+    ms_per_cell: int
+    jump_duration_ms: int
+    empty_token: str
+    pieces: tuple = ()
+
+
+def load(path=None) -> GameConfig:
+    """Read the TOML config file and return the GameConfig it describes."""
     path = Path(path) if path is not None else DEFAULT_CONFIG_PATH
     with open(path, "rb") as f:
         data = tomllib.load(f)
 
-    global CELL_SIZE, MS_PER_CELL, JUMP_DURATION_MS, EMPTY_TOKEN
+    return GameConfig(
+        cell_size=data["board"]["cell_size"],
+        ms_per_cell=data["timing"]["ms_per_cell"],
+        jump_duration_ms=data["timing"]["jump_duration_ms"],
+        empty_token=data["tokens"]["empty"],
+        pieces=tuple(_piece_spec(entry) for entry in data.get("pieces", [])),
+    )
 
-    CELL_SIZE = data["board"]["cell_size"]
-    MS_PER_CELL = data["timing"]["ms_per_cell"]
-    JUMP_DURATION_MS = data["timing"]["jump_duration_ms"]
-    EMPTY_TOKEN = data["tokens"]["empty"]
 
-
-# Load on import so config.CELL_SIZE and friends are available immediately.
-load()
+def _piece_spec(entry) -> PieceSpec:
+    return PieceSpec(
+        name=entry["name"],
+        symbol=entry["symbol"],
+        movement=entry["movement"],
+        directions=tuple(tuple(step) for step in entry.get("directions", [])),
+        offsets=tuple(tuple(step) for step in entry.get("offsets", [])),
+        promotes_to=entry.get("promotes_to"),
+        victory_on_capture=entry.get("victory_on_capture", False),
+    )

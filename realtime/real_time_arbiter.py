@@ -1,32 +1,47 @@
 # realtime/real_time_arbiter.py
 from dataclasses import dataclass
 
-import config
-from model.piece import PieceKind, PieceState
-from rules.piece_rules import promotion_kind
+from model.arrival import ArrivalContext
+from model.piece import PieceState
 from realtime.motion import Motion
 
 
 @dataclass(frozen=True)
 class AdvanceResult:
-    """Outcome of advancing simulated time. `king_captured` is the notification GameEngine acts on."""
-    king_captured: bool = False
+    """Outcome of advancing simulated time. `game_over` is the notification GameEngine acts on.
+
+    Deliberately not "king_captured": *what* ends the game is a rules question, and this layer is
+    not allowed to have an opinion on it.
+    """
+    game_over: bool = False
 
 
 class RealTimeArbiter:
     """Owns the active motions and jumps (outside the Board) and resolves them as simulated time
-    advances.
+    advances. It is the game's model of *time*, and it knows nothing about chess.
 
-    It receives only already-validated move commands. A moving piece stays logically on its
-    source cell until it arrives; the board's occupancy changes only on arrival, so `print board`
-    is deterministic. A jump (dodge) keeps a piece on its cell but protected for a window: an enemy
-    that arrives while it is still airborne is eaten by the jumper. Time is simulated via
-    advance_time(ms) — never real sleep.
+    It receives only already-validated move commands. A moving piece stays logically on its source
+    cell until it arrives; the board's occupancy changes only on arrival, so `print board` is
+    deterministic. A jump (dodge) keeps a piece on its cell but protected for a window. Time is
+    simulated via advance_time(ms) — never real sleep.
+
+    What an arrival *means* is not decided here. This class reports the situation to the injected
+    rule set — including the one timing fact only it can know, whether the destination holds a
+    piece that is still airborne — and applies whatever effects come back. So it contains no
+    capture logic, no promotion, no victory condition, and no notion of a king; swapping the rules
+    (or the whole game) leaves this file untouched, and swapping the *time model* is the only
+    reason to edit it.
+
+    Collaborators are injected:
+      - rules: resolve_arrival(ArrivalContext) -> list of effects
+      - effect_applier: apply(board, effects) -> bool (whether the game ended)
     """
 
-    def __init__(self, ms_per_cell=None, jump_duration_ms=None):
-        self._ms_per_cell = ms_per_cell if ms_per_cell is not None else config.MS_PER_CELL
-        self._jump_duration_ms = jump_duration_ms if jump_duration_ms is not None else config.JUMP_DURATION_MS
+    def __init__(self, rules, effect_applier, ms_per_cell: int, jump_duration_ms: int):
+        self._rules = rules
+        self._applier = effect_applier
+        self._ms_per_cell = ms_per_cell
+        self._jump_duration_ms = jump_duration_ms
         self._clock_ms = 0
         self._motions = []
         self._airborne = {}  # Position -> land_ms: pieces jumping in place, protected until they land
@@ -70,49 +85,32 @@ class RealTimeArbiter:
         self._motions = still_moving
 
         arrived.sort(key=lambda motion: motion.arrival_ms)
-        king_captured = False
+        game_over = False
         for motion in arrived:
             if self._resolve_arrival(motion):
-                king_captured = True
+                game_over = True
 
         self._expire_airborne()
-        return AdvanceResult(king_captured=king_captured)
+        return AdvanceResult(game_over=game_over)
 
     def _resolve_arrival(self, motion) -> bool:
-        """Atomically land a motion; returns True if a king was captured.
+        """Ask the rules what this arrival means, apply it, and report whether the game ended."""
+        context = ArrivalContext(
+            board=self._board,
+            piece=motion.piece,
+            destination=motion.destination,
+            destination_is_protected=self._is_protected_on_arrival(motion),
+        )
+        return self._applier.apply(self._board, self._rules.resolve_arrival(context))
 
-        Jump collision: if an enemy is still airborne on the destination when the mover arrives
-        (arrival <= its land time), the jumper eats the arriving attacker (the attacker is removed
-        from its origin, the jumper stays put). Otherwise it is a normal capture-and-move, with
-        pawn promotion applied on arrival.
+    def _is_protected_on_arrival(self, motion) -> bool:
+        """Whether the destination's occupant is still airborne when this motion lands.
+
+        The one fact about an arrival that only the time model can answer — and the only one this
+        class passes to the rules.
         """
-        board = self._board
-        destination = motion.destination
-        arriver = motion.piece
-        occupant = board.piece_at(destination)
-        land_ms = self._airborne.get(destination)
-
-        if (land_ms is not None and motion.arrival_ms <= land_ms
-                and occupant is not None and occupant.color != arriver.color):
-            board.remove_piece(arriver)
-            arriver.state = PieceState.CAPTURED
-            return arriver.kind == PieceKind.KING
-
-        king_captured = False
-        if occupant is not None:
-            king_captured = occupant.kind == PieceKind.KING
-            board.remove_piece(occupant)
-            occupant.state = PieceState.CAPTURED
-
-        board.move_piece(motion.source, destination)
-        arriver.state = PieceState.IDLE
-        self._apply_promotion(arriver)
-        return king_captured
-
-    def _apply_promotion(self, piece):
-        new_kind = promotion_kind(piece, self._board)
-        if new_kind is not None:
-            piece.kind = new_kind
+        land_ms = self._airborne.get(motion.destination)
+        return land_ms is not None and motion.arrival_ms <= land_ms
 
     def _expire_airborne(self):
         """Drop jumps whose land time has passed."""

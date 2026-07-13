@@ -1,8 +1,6 @@
 # text_io/board_parser.py
-import config
 from model.board import Board
 from model.position import Position
-from text_io.piece_factory import PieceFactory
 
 
 class BoardParseError(Exception):
@@ -19,13 +17,19 @@ class BoardParseError(Exception):
 class BoardParser:
     """Builds a model Board from the current text board format.
 
-    Format: one row per line, cells separated by whitespace, each cell either the empty token
-    or a two-char <color><symbol> token. Dimensions are inferred from the text. Pieces get
-    stable ids from a PieceFactory. This class is specific to this text format.
+    Format: one row per line, cells separated by whitespace, each cell either the empty token or a
+    two-char <color><symbol> token. Dimensions are inferred from the text. Which tokens are valid
+    is the injected codec's business, and ids come from the injected factory — so a new piece needs
+    no change here, and neither does a change to the token format.
+
+    This class is one half of "the conversion": it, and BoardPrinter, are the only things that know
+    how a board is spelled. If the board's internal representation changes, they are what changes
+    with it.
     """
 
-    def __init__(self, piece_factory=None):
-        self._factory = piece_factory if piece_factory is not None else PieceFactory()
+    def __init__(self, piece_factory, codec):
+        self._factory = piece_factory
+        self._codec = codec
 
     def parse(self, board_text: str) -> Board:
         """Convert the raw board text into a Board, or raise BoardParseError on malformed input."""
@@ -34,18 +38,18 @@ class BoardParser:
             raise BoardParseError("UNKNOWN_TOKEN")
 
         width = len(rows[0])
-        height = len(rows)
-        board = Board(width, height)
+        board = Board(width, len(rows))
 
         for row_index, row in enumerate(rows):
             if len(row) != width:
                 raise BoardParseError("ROW_WIDTH_MISMATCH")
             for col_index, token in enumerate(row):
-                if token == config.EMPTY_TOKEN:
+                if self._codec.is_empty(token):
                     continue
-                piece = self._factory.create_from_token(token, Position(row_index, col_index))
-                if piece is None:
+                decoded = self._codec.decode(token)
+                if decoded is None:
                     raise BoardParseError("UNKNOWN_TOKEN")
-                board.add_piece(piece)
+                color, kind = decoded
+                board.add_piece(self._factory.create(color, kind, Position(row_index, col_index)))
 
         return board

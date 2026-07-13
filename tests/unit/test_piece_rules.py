@@ -1,10 +1,43 @@
 # tests/unit/test_piece_rules.py
+import pytest
+
+import config
 from model.board import Board
 from model.piece import Piece, Color, PieceKind
 from model.position import Position
 from rules.piece_rules import (
-    RookRule, BishopRule, QueenRule, KnightRule, KingRule, PawnRule, rule_for, promotion_kind,
+    CombinedRule, LeapingRule, PawnRule, PieceRule, PieceRuleRegistry, SlidingRule,
+    UnknownPieceKindError,
 )
+from rules.rule_factory import build_registry
+
+# The standard pieces are not hard-coded anywhere any more: they are built from config.toml, so
+# these tests exercise the rules the real game actually plays with.
+STANDARD = build_registry(config.load().pieces)
+
+
+def rook_rule():
+    return STANDARD.rule_for(PieceKind.ROOK)
+
+
+def bishop_rule():
+    return STANDARD.rule_for(PieceKind.BISHOP)
+
+
+def queen_rule():
+    return STANDARD.rule_for(PieceKind.QUEEN)
+
+
+def knight_rule():
+    return STANDARD.rule_for(PieceKind.KNIGHT)
+
+
+def king_rule():
+    return STANDARD.rule_for(PieceKind.KING)
+
+
+def pawn_rule():
+    return STANDARD.rule_for(PieceKind.PAWN)
 
 
 def pc(piece_id, color, kind, row, col):
@@ -23,7 +56,7 @@ def test_rook_moves_across_empty_row_and_column():
     rook = pc("r", Color.WHITE, PieceKind.ROOK, 2, 2)
     board = board_with(5, 5, rook)
     expected = {Position(2, c) for c in (0, 1, 3, 4)} | {Position(r, 2) for r in (0, 1, 3, 4)}
-    assert RookRule().legal_destinations(board, rook) == expected
+    assert rook_rule().legal_destinations(board, rook) == expected
 
 
 def test_rook_stops_before_a_friendly_blocker():
@@ -31,7 +64,7 @@ def test_rook_stops_before_a_friendly_blocker():
     friend = pc("f", Color.WHITE, PieceKind.PAWN, 0, 2)
     board = board_with(4, 1, rook, friend)  # single row, cols 0..3
     # Reaches (0,1); blocked by the friend at (0,2); cannot reach (0,2) or (0,3).
-    assert RookRule().legal_destinations(board, rook) == {Position(0, 1)}
+    assert rook_rule().legal_destinations(board, rook) == {Position(0, 1)}
 
 
 def test_rook_captures_an_enemy_blocker_but_does_not_pass_it():
@@ -39,7 +72,7 @@ def test_rook_captures_an_enemy_blocker_but_does_not_pass_it():
     enemy = pc("e", Color.BLACK, PieceKind.PAWN, 0, 2)
     board = board_with(4, 1, rook, enemy)
     # (0,1) empty and (0,2) enemy are legal; (0,3) behind the enemy is not.
-    assert RookRule().legal_destinations(board, rook) == {Position(0, 1), Position(0, 2)}
+    assert rook_rule().legal_destinations(board, rook) == {Position(0, 1), Position(0, 2)}
 
 
 # --- Bishop ---
@@ -52,7 +85,7 @@ def test_bishop_moves_diagonally_and_not_straight():
         Position(3, 1), Position(4, 0),
         Position(1, 3), Position(0, 4),
     }
-    dests = BishopRule().legal_destinations(board, bishop)
+    dests = bishop_rule().legal_destinations(board, bishop)
     assert dests == expected
     assert Position(2, 3) not in dests  # straight is not a bishop move
     assert Position(3, 2) not in dests
@@ -64,9 +97,9 @@ def test_queen_combines_rook_and_bishop_movement():
     board = board_with(5, 5, queen)
     rook_view = pc("q", Color.WHITE, PieceKind.ROOK, 2, 2)
     bishop_view = pc("q", Color.WHITE, PieceKind.BISHOP, 2, 2)
-    expected = (RookRule().legal_destinations(board, rook_view)
-                | BishopRule().legal_destinations(board, bishop_view))
-    assert QueenRule().legal_destinations(board, queen) == expected
+    expected = (rook_rule().legal_destinations(board, rook_view)
+                | bishop_rule().legal_destinations(board, bishop_view))
+    assert queen_rule().legal_destinations(board, queen) == expected
 
 
 # --- Knight ---
@@ -80,7 +113,7 @@ def test_knight_jumps_over_blockers():
         Position(0, 1), Position(0, 3), Position(4, 1), Position(4, 3),
         Position(1, 0), Position(3, 0), Position(1, 4), Position(3, 4),
     }
-    assert KnightRule().legal_destinations(board, knight) == expected
+    assert knight_rule().legal_destinations(board, knight) == expected
 
 
 def test_knight_excludes_friendly_landing_but_allows_enemy():
@@ -88,7 +121,7 @@ def test_knight_excludes_friendly_landing_but_allows_enemy():
     friend = pc("f", Color.WHITE, PieceKind.PAWN, 0, 1)   # an L target, friendly -> excluded
     enemy = pc("e", Color.BLACK, PieceKind.PAWN, 0, 3)    # an L target, enemy -> allowed
     board = board_with(5, 5, knight, friend, enemy)
-    dests = KnightRule().legal_destinations(board, knight)
+    dests = knight_rule().legal_destinations(board, knight)
     assert Position(0, 1) not in dests
     assert Position(0, 3) in dests
 
@@ -98,33 +131,33 @@ def test_king_moves_one_cell_only():
     king = pc("k", Color.WHITE, PieceKind.KING, 2, 2)
     board = board_with(5, 5, king)
     expected = {Position(r, c) for r in (1, 2, 3) for c in (1, 2, 3)} - {Position(2, 2)}
-    assert KingRule().legal_destinations(board, king) == expected
+    assert king_rule().legal_destinations(board, king) == expected
 
 
 def test_king_is_clipped_at_the_board_edge():
     king = pc("k", Color.WHITE, PieceKind.KING, 0, 0)
     board = board_with(5, 5, king)
-    assert KingRule().legal_destinations(board, king) == {Position(0, 1), Position(1, 0), Position(1, 1)}
+    assert king_rule().legal_destinations(board, king) == {Position(0, 1), Position(1, 0), Position(1, 1)}
 
 
 # --- Pawn --- (board_with(3, 5): white start row = 3, black start row = 1; row 2 is neither)
 def test_white_pawn_moves_one_row_up_into_empty():
     pawn = pc("p", Color.WHITE, PieceKind.PAWN, 2, 1)
     board = board_with(3, 5, pawn)  # cols 0..2, rows 0..4
-    assert PawnRule().legal_destinations(board, pawn) == {Position(1, 1)}
+    assert pawn_rule().legal_destinations(board, pawn) == {Position(1, 1)}
 
 
 def test_black_pawn_moves_one_row_down_into_empty():
     pawn = pc("p", Color.BLACK, PieceKind.PAWN, 2, 1)
     board = board_with(3, 5, pawn)
-    assert PawnRule().legal_destinations(board, pawn) == {Position(3, 1)}
+    assert pawn_rule().legal_destinations(board, pawn) == {Position(3, 1)}
 
 
 def test_pawn_cannot_move_forward_into_an_occupied_cell():
     pawn = pc("p", Color.WHITE, PieceKind.PAWN, 2, 1)
     blocker = pc("b", Color.BLACK, PieceKind.PAWN, 1, 1)  # directly ahead
     board = board_with(3, 5, pawn, blocker)
-    assert PawnRule().legal_destinations(board, pawn) == set()
+    assert pawn_rule().legal_destinations(board, pawn) == set()
 
 
 def test_pawn_captures_one_diagonal_step_forward_only_enemies():
@@ -132,13 +165,13 @@ def test_pawn_captures_one_diagonal_step_forward_only_enemies():
     enemy = pc("e", Color.BLACK, PieceKind.PAWN, 1, 2)   # diagonal forward-right -> capturable
     friend = pc("f", Color.WHITE, PieceKind.PAWN, 1, 0)  # diagonal forward-left -> not capturable
     board = board_with(3, 5, pawn, enemy, friend)
-    assert PawnRule().legal_destinations(board, pawn) == {Position(1, 1), Position(1, 2)}
+    assert pawn_rule().legal_destinations(board, pawn) == {Position(1, 1), Position(1, 2)}
 
 
 def test_pawn_does_not_move_diagonally_into_empty():
     pawn = pc("p", Color.WHITE, PieceKind.PAWN, 2, 1)
     board = board_with(3, 5, pawn)
-    dests = PawnRule().legal_destinations(board, pawn)
+    dests = pawn_rule().legal_destinations(board, pawn)
     assert Position(1, 0) not in dests
     assert Position(1, 2) not in dests
 
@@ -146,19 +179,19 @@ def test_pawn_does_not_move_diagonally_into_empty():
 def test_white_pawn_has_a_two_step_move_from_the_start_row():
     pawn = pc("p", Color.WHITE, PieceKind.PAWN, 3, 1)  # white start row on a height-5 board
     board = board_with(3, 5, pawn)
-    assert PawnRule().legal_destinations(board, pawn) == {Position(2, 1), Position(1, 1)}
+    assert pawn_rule().legal_destinations(board, pawn) == {Position(2, 1), Position(1, 1)}
 
 
 def test_black_pawn_has_a_two_step_move_from_the_start_row():
     pawn = pc("p", Color.BLACK, PieceKind.PAWN, 1, 1)  # black start row
     board = board_with(3, 5, pawn)
-    assert PawnRule().legal_destinations(board, pawn) == {Position(2, 1), Position(3, 1)}
+    assert pawn_rule().legal_destinations(board, pawn) == {Position(2, 1), Position(3, 1)}
 
 
 def test_pawn_has_no_two_step_move_off_the_start_row():
     pawn = pc("p", Color.WHITE, PieceKind.PAWN, 2, 1)  # not the start row (3)
     board = board_with(3, 5, pawn)
-    dests = PawnRule().legal_destinations(board, pawn)
+    dests = pawn_rule().legal_destinations(board, pawn)
     assert dests == {Position(1, 1)}
 
 
@@ -166,35 +199,83 @@ def test_two_step_move_blocked_by_a_piece_in_the_middle():
     pawn = pc("p", Color.WHITE, PieceKind.PAWN, 3, 1)   # start row
     blocker = pc("b", Color.BLACK, PieceKind.PAWN, 2, 1)  # the intermediate cell
     board = board_with(3, 5, pawn, blocker)
-    assert PawnRule().legal_destinations(board, pawn) == set()
+    assert pawn_rule().legal_destinations(board, pawn) == set()
 
 
-# --- promotion ---
-def test_white_pawn_promotes_on_the_last_row():
-    board = board_with(3, 3, pc("p", Color.WHITE, PieceKind.PAWN, 0, 1))  # row 0 = last for white
-    assert promotion_kind(board.piece_at(Position(0, 1)), board) == PieceKind.QUEEN
+# --- promotion (a rule's own decision about what a piece becomes on arriving somewhere) ---
+def promoting_pawn():
+    return PawnRule(promotes_to=PieceKind.QUEEN)
 
 
-def test_black_pawn_promotes_on_the_last_row():
-    board = board_with(3, 3, pc("p", Color.BLACK, PieceKind.PAWN, 2, 1))  # row height-1 = last for black
-    assert promotion_kind(board.piece_at(Position(2, 1)), board) == PieceKind.QUEEN
+def test_white_pawn_promotes_on_arriving_at_the_last_row():
+    pawn = pc("p", Color.WHITE, PieceKind.PAWN, 1, 1)
+    board = board_with(3, 3, pawn)  # row 0 = last for white
+    assert promoting_pawn().kind_after_arrival(board, pawn, Position(0, 1)) == PieceKind.QUEEN
 
 
-def test_pawn_off_the_last_row_does_not_promote():
-    board = board_with(3, 3, pc("p", Color.WHITE, PieceKind.PAWN, 1, 1))
-    assert promotion_kind(board.piece_at(Position(1, 1)), board) is None
+def test_black_pawn_promotes_on_arriving_at_the_last_row():
+    pawn = pc("p", Color.BLACK, PieceKind.PAWN, 1, 1)
+    board = board_with(3, 3, pawn)  # row height-1 = last for black
+    assert promoting_pawn().kind_after_arrival(board, pawn, Position(2, 1)) == PieceKind.QUEEN
 
 
-def test_non_pawn_never_promotes():
-    board = board_with(3, 3, pc("r", Color.WHITE, PieceKind.ROOK, 0, 1))
-    assert promotion_kind(board.piece_at(Position(0, 1)), board) is None
+def test_pawn_arriving_off_the_last_row_does_not_promote():
+    pawn = pc("p", Color.WHITE, PieceKind.PAWN, 2, 1)
+    board = board_with(3, 3, pawn)
+    assert promoting_pawn().kind_after_arrival(board, pawn, Position(1, 1)) is None
+
+
+def test_a_pawn_with_nothing_to_promote_into_stays_a_pawn():
+    # What a pawn promotes into is injected: a variant that removes promotion just passes nothing.
+    pawn = pc("p", Color.WHITE, PieceKind.PAWN, 1, 1)
+    board = board_with(3, 3, pawn)
+    assert PawnRule().kind_after_arrival(board, pawn, Position(0, 1)) is None
+
+
+def test_other_pieces_transform_into_nothing_by_default():
+    rook = pc("r", Color.WHITE, PieceKind.ROOK, 1, 1)
+    board = board_with(3, 3, rook)
+    assert rook_rule().kind_after_arrival(board, rook, Position(0, 1)) is None
 
 
 # --- registry ---
-def test_rule_for_maps_each_kind_to_its_rule():
-    assert isinstance(rule_for(PieceKind.ROOK), RookRule)
-    assert isinstance(rule_for(PieceKind.BISHOP), BishopRule)
-    assert isinstance(rule_for(PieceKind.QUEEN), QueenRule)
-    assert isinstance(rule_for(PieceKind.KNIGHT), KnightRule)
-    assert isinstance(rule_for(PieceKind.KING), KingRule)
-    assert isinstance(rule_for(PieceKind.PAWN), PawnRule)
+def test_registry_maps_each_configured_kind_to_a_rule():
+    # Rook, bishop and queen are not three classes any more — they are three configurations of
+    # SlidingRule. Knight and king are two configurations of LeapingRule.
+    assert isinstance(STANDARD.rule_for(PieceKind.ROOK), SlidingRule)
+    assert isinstance(STANDARD.rule_for(PieceKind.BISHOP), SlidingRule)
+    assert isinstance(STANDARD.rule_for(PieceKind.QUEEN), SlidingRule)
+    assert isinstance(STANDARD.rule_for(PieceKind.KNIGHT), LeapingRule)
+    assert isinstance(STANDARD.rule_for(PieceKind.KING), LeapingRule)
+    assert isinstance(STANDARD.rule_for(PieceKind.PAWN), PawnRule)
+
+
+def test_registry_rejects_a_kind_it_has_no_rule_for():
+    registry = PieceRuleRegistry({PieceKind.ROOK: SlidingRule([(0, 1)])})
+    with pytest.raises(UnknownPieceKindError):
+        registry.rule_for(PieceKind.QUEEN)
+
+
+def test_a_combined_rule_unions_its_parts():
+    # How configuration composes a new piece out of existing patterns, with no new code.
+    archbishop = pc("a", Color.WHITE, PieceKind("archbishop"), 2, 2)
+    board = board_with(5, 5, archbishop)
+    bishop_moves = SlidingRule([(1, 1), (1, -1), (-1, 1), (-1, -1)])
+    knight_moves = LeapingRule([(2, 1), (2, -1), (-2, 1), (-2, -1), (1, 2), (1, -2), (-1, 2), (-1, -2)])
+    combined = CombinedRule([bishop_moves, knight_moves])
+    assert combined.legal_destinations(board, archbishop) == (
+        bishop_moves.legal_destinations(board, archbishop)
+        | knight_moves.legal_destinations(board, archbishop)
+    )
+
+
+def test_a_registry_can_hold_a_completely_custom_rule():
+    # The whole extension point: a new piece is a rule registered under a kind. Nothing else.
+    class TeleportRule(PieceRule):
+        def legal_destinations(self, board, piece):
+            return {Position(0, 0)}
+
+    registry = PieceRuleRegistry({PieceKind.ROOK: TeleportRule()})
+    rook = pc("r", Color.WHITE, PieceKind.ROOK, 2, 2)
+    board = board_with(3, 3, rook)
+    assert registry.rule_for(PieceKind.ROOK).legal_destinations(board, rook) == {Position(0, 0)}
