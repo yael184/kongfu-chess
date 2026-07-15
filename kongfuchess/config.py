@@ -33,6 +33,24 @@ class PieceSpec:
 
 
 @dataclass(frozen=True)
+class AssetsConfig:
+    """Where the OpenCV view finds its art, and the folder vocabulary it renders with.
+
+    Paths are absolute (resolved against the package), so the view loads them regardless of the
+    current working directory. Re-skinning is entirely here: no literal path or folder name lives
+    in view/.
+    """
+    board_image: Path
+    pieces_dir: Path
+    default_board: Path
+    white_suffix: str
+    black_suffix: str
+    idle_state: str
+    move_state: str
+    jump_state: str
+
+
+@dataclass(frozen=True)
 class GameConfig:
     """The game's tunables, loaded from config.toml.
 
@@ -43,6 +61,7 @@ class GameConfig:
     jump_duration_ms: int
     empty_token: str
     pieces: tuple = ()
+    assets: AssetsConfig = None
 
 
 def load(path=None) -> GameConfig:
@@ -57,6 +76,23 @@ def load(path=None) -> GameConfig:
         jump_duration_ms=data["timing"]["jump_duration_ms"],
         empty_token=data["tokens"]["empty"],
         pieces=tuple(_piece_spec(entry) for entry in data.get("pieces", [])),
+        assets=_assets_config(data.get("assets"), path.parent),
+    )
+
+
+def _assets_config(entry, base_dir) -> "AssetsConfig":
+    """Resolve the view's asset paths relative to the config file's directory (the package root)."""
+    if entry is None:
+        return None
+    return AssetsConfig(
+        board_image=base_dir / entry["board_image"],
+        pieces_dir=base_dir / entry["pieces_dir"],
+        default_board=base_dir / entry["default_board"],
+        white_suffix=entry["white_suffix"],
+        black_suffix=entry["black_suffix"],
+        idle_state=entry["idle_state"],
+        move_state=entry["move_state"],
+        jump_state=entry["jump_state"],
     )
 
 

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from kongfuchess.model.arrival import ArrivalContext
 from kongfuchess.model.piece import PieceState
-from kongfuchess.realtime.motion import Motion
+from kongfuchess.realtime.motion import Motion, MotionView
 
 
 @dataclass(frozen=True)
@@ -50,6 +50,16 @@ class RealTimeArbiter:
     def has_active_motion(self) -> bool:
         """Whether any motion is currently in flight (the common-route one-active-motion fact)."""
         return len(self._motions) > 0
+
+    def active_motions(self):
+        """Read-only views of the in-flight motions, each sampled at the current clock, for the
+        renderer to interpolate. Pure timing data — no chess, no live Motion handed out."""
+        return [MotionView(m.piece, m.source, m.destination, m.progress(self._clock_ms))
+                for m in self._motions]
+
+    def airborne_cells(self):
+        """The cells whose piece is mid-jump (dodging in place) right now — for the renderer."""
+        return frozenset(self._airborne)
 
     def start_motion(self, board, source, destination):
         """Begin a validated move. The piece is flagged MOVING but stays on its source cell."""

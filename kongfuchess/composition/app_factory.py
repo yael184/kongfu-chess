@@ -16,6 +16,7 @@ from kongfuchess.input.board_mapper import BoardMapper
 from kongfuchess.input.controller import Controller
 from kongfuchess.model.effects import EffectApplier
 from kongfuchess.model.game_state import GameState
+from kongfuchess.model.piece import Color, PieceKind
 from kongfuchess.realtime.real_time_arbiter import RealTimeArbiter
 from kongfuchess.rules.rule_factory import build_rule_set
 from kongfuchess.text_io.board_parser import BoardParser
@@ -24,6 +25,9 @@ from kongfuchess.text_io.piece_factory import PieceFactory
 from kongfuchess.text_io.token_codec import codec_for
 from kongfuchess.texttests.commands import duration_command, pixel_command, print_board_command
 from kongfuchess.texttests.script_runner import ScriptRunner
+from kongfuchess.view.board_renderer import BoardRenderer
+from kongfuchess.view.game_loop import GameLoop
+from kongfuchess.view.sprite_repository import SpriteRepository
 
 
 def build_codec(cfg):
@@ -86,3 +90,37 @@ def build_script_runner(board, cfg, rules=None) -> ScriptRunner:
     engine = build_engine(board, cfg, rules)
     controller = build_controller(engine, cfg)
     return ScriptRunner(build_command_table(engine, controller, build_printer(cfg)))
+
+
+def build_piece_folders(cfg):
+    """Map each (kind, color) to its sprite folder, from the configured symbols and color suffixes.
+
+    This is the one place the on-disk piece naming (<symbol><suffix>, e.g. QW/KB) is spelled out;
+    the view is handed resolved folders and never names a piece or a color.
+    """
+    assets = cfg.assets
+    folders = {}
+    for spec in cfg.pieces:
+        kind = PieceKind(spec.name)
+        folders[(kind, Color.WHITE)] = assets.pieces_dir / f"{spec.symbol}{assets.white_suffix}"
+        folders[(kind, Color.BLACK)] = assets.pieces_dir / f"{spec.symbol}{assets.black_suffix}"
+    return folders
+
+
+def build_renderer(cfg) -> BoardRenderer:
+    """The OpenCV frame renderer: board background plus the configured piece sprites."""
+    assets = cfg.assets
+    sprites = SpriteRepository(build_piece_folders(cfg), cfg.cell_size)
+    return BoardRenderer(assets.board_image, cfg.cell_size, sprites,
+                         assets.idle_state, assets.move_state, assets.jump_state)
+
+
+def build_gui_app(board, cfg, window_title, rules=None) -> GameLoop:
+    """The full real-time OpenCV surface, wired end to end around an already-parsed board.
+
+    The swap point for the graphical surface, exactly as build_script_runner is for the text one:
+    same engine, same controller, a different way in (mouse) and out (pixels).
+    """
+    engine = build_engine(board, cfg, rules)
+    controller = build_controller(engine, cfg)
+    return GameLoop(engine, controller, build_renderer(cfg), window_title)

@@ -2,7 +2,7 @@
 
 A command-driven chess engine in Python. You supply a starting board and a list of commands (clicks, waits, prints); the engine processes them and updates the board state.
 
-> **Note:** This is a layered, simplified implementation. The full product vision (a **real-time**, no-turns game with move travel time, cooldowns, and scoring) is described in [kong_fu_chess_requirements.md](kong_fu_chess_requirements.md). Moves take **travel time** (a piece is shown at its origin until it has traveled far enough); jump/dodge, pawn two-step and promotion are implemented, and you win by capturing the enemy king — but post-move cooldowns, scoring, and networking are not implemented yet.
+> **Note:** This is a layered, simplified implementation. The full product vision (a **real-time**, no-turns game with move travel time, cooldowns, and scoring) is described in [kong_fu_chess_requirements.md](kong_fu_chess_requirements.md). Moves take **travel time** (a piece is shown at its origin until it has traveled far enough); jump/dodge, pawn two-step and promotion are implemented, there is a **real-time OpenCV GUI** with gliding pieces, and you win by capturing the enemy king — but post-move cooldowns, scoring, and networking are not implemented yet.
 
 ## Installation
 
@@ -17,6 +17,18 @@ The game reads a single text document from stdin containing a starting board and
 ```bash
 python -m kongfuchess.main < input.txt
 ```
+
+### Graphical (OpenCV) surface
+
+There is also a real-time graphical surface. It shares the whole engine with the text one — only the way time enters (a real clock instead of `wait`) and the way state leaves (sprites instead of text) differ:
+
+```bash
+pip install opencv-python
+python -m kongfuchess.gui                 # loads the standard starting position
+python -m kongfuchess.gui my_board.txt    # or a board grid of your own
+```
+
+**Left-click** selects a piece and then a destination (a second click on your own piece switches the selection); **right-click** makes a piece jump in place (a dodge). Pieces **glide** between cells over their travel time, and the window closes on <kbd>Esc</kbd>. The art lives under `kongfuchess/assets/` and is entirely config-driven (`[assets]` in [config.toml](kongfuchess/config.toml)) — re-skinning changes files, not code.
 
 ### Input format
 
@@ -57,18 +69,21 @@ The engine is layered, and every collaborator is **injected** — no class build
 dependencies, and only [composition/app_factory.py](composition/app_factory.py) knows more than one
 layer. Each kind of change therefore has exactly one home.
 
+All source lives in the [kongfuchess/](kongfuchess/) package (separated from `.venv`, tests, and other project files at the root).
+
 | Layer | Responsibility |
 |------|----------------|
-| [model/](model/) | Domain core: `Position`, `Piece` (`PieceKind` is an open value object, not an enum), the `BoardView`/`MutableBoard` ports, `Board`, `GameState`, and the `Effect`/`ArrivalContext` vocabulary the layers above talk in |
-| [rules/](rules/) | **The only layer that knows what chess is.** `PieceRule` strategies (`SlidingRule`, `LeapingRule`, `PawnRule`, …) built from config by `rule_factory.py`; `ChessRuleSet` answers "is this legal?" and "what does this arrival do?" — always as data, never by mutating |
-| [realtime/](realtime/) | `Motion` and `RealTimeArbiter` — movement over time, and **no chess at all**: it asks the injected rule set what an arrival means and applies the effects it gets back |
-| [engine/game_engine.py](engine/game_engine.py) | `GameEngine` — the public command boundary (`request_move`, `request_jump`, `wait`, `snapshot`) |
-| [input/](input/) | `BoardMapper` (pixels → cells) and `Controller` (click selection → `request_move`) |
-| [text_io/](text_io/) | `TokenCodec` (the token format, symbols injected from config), `PieceFactory` (stable ids), `BoardParser`, `BoardPrinter` |
-| [texttests/](texttests/) | `ScriptParser` (document → board + commands) and `ScriptRunner` (dispatches through an injected command table) |
-| [composition/](composition/) | The composition root — builds and wires everything from a `GameConfig`. The swap point for a different rule set, time model, board or surface |
-| [main.py](main.py) | Reads a document from stdin and hands off to the composition root |
-| [config.py](config.py) / [config.toml](config.toml) | Tunables **and the pieces themselves**, loaded from an external file |
+| [model/](kongfuchess/model/) | Domain core: `Position`, `Piece` (`PieceKind` is an open value object, not an enum), the `BoardView`/`MutableBoard` ports, `Board`, `GameState`, and the `Effect`/`ArrivalContext` vocabulary the layers above talk in |
+| [rules/](kongfuchess/rules/) | **The only layer that knows what chess is.** `PieceRule` strategies (`SlidingRule`, `LeapingRule`, `PawnRule`, …) built from config by `rule_factory.py`; `ChessRuleSet` answers "is this legal?" and "what does this arrival do?" — always as data, never by mutating |
+| [realtime/](kongfuchess/realtime/) | `Motion` and `RealTimeArbiter` — movement over time, and **no chess at all**: it asks the injected rule set what an arrival means and applies the effects it gets back |
+| [engine/game_engine.py](kongfuchess/engine/game_engine.py) | `GameEngine` — the public command boundary (`request_move`, `request_jump`, `wait`, `snapshot`, `active_motions`) |
+| [input/](kongfuchess/input/) | `BoardMapper` (pixels → cells) and `Controller` (click selection → `request_move`) |
+| [text_io/](kongfuchess/text_io/) | `TokenCodec` (the token format, symbols injected from config), `PieceFactory` (stable ids), `BoardParser`, `BoardPrinter` |
+| [texttests/](kongfuchess/texttests/) | `ScriptParser` (document → board + commands) and `ScriptRunner` (dispatches through an injected command table) |
+| [view/](kongfuchess/view/) | The **OpenCV surface** — `SpriteRepository`, `Animation`, `BoardRenderer` (gliding pieces, selection, banner) and the real-time `GameLoop`. Holds no chess and no timing; reads the engine snapshot and drives the injected `Controller` |
+| [composition/](kongfuchess/composition/) | The composition root — builds and wires everything (text **and** GUI) from a `GameConfig`. The swap point for a different rule set, time model, board or surface |
+| [main.py](kongfuchess/main.py) / [gui.py](kongfuchess/gui.py) | The two entry points: a document from stdin (text), or a board file + OpenCV window (GUI) |
+| [config.py](kongfuchess/config.py) / [config.toml](kongfuchess/config.toml) | Tunables, **the pieces themselves**, and the GUI `[assets]`, loaded from an external file |
 
 ## Configuration
 

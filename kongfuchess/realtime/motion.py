@@ -32,3 +32,26 @@ class Motion:
 
     def has_arrived(self, now_ms: int) -> bool:
         return now_ms >= self.arrival_ms
+
+    def progress(self, now_ms: int) -> float:
+        """How far along the trip the piece is, in [0, 1] — 0 at the source, 1 at the destination.
+
+        A renderer interpolates the pixel position between the two cells with this. A zero-length
+        trip (already there) is fully arrived.
+        """
+        span = self.arrival_ms - self.start_ms
+        if span <= 0:
+            return 1.0
+        return min(1.0, max(0.0, (now_ms - self.start_ms) / span))
+
+
+@dataclass(frozen=True)
+class MotionView:
+    """A read-only view of an in-flight motion for rendering: which piece, from where to where,
+    and how far along (0..1). Carries no timing internals — the arbiter has already sampled the
+    clock — so a renderer never touches the clock or the live Motion.
+    """
+    piece: Piece
+    source: Position
+    destination: Position
+    progress: float

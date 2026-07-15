@@ -77,6 +77,7 @@ class GameEngine:
       - start_motion(board, source, destination)
       - request_jump(board, cell)
       - advance_time(ms) -> outcome, where outcome exposes a boolean `game_over`
+      - active_motions() -> read-only motion views; airborne_cells() -> cells (for a renderer)
     The rules collaborator is expected to provide:
       - validate_move(board, source, destination) -> a result with `is_valid` and `reason`
     """
@@ -116,6 +117,18 @@ class GameEngine:
         if outcome.game_over:
             self._state.game_over = True
         return outcome
+
+    def active_motions(self):
+        """Read-only views of the moves currently in flight, for a renderer to interpolate.
+
+        The board snapshot shows a moving piece on its source cell (the logical-board rule); this
+        is the extra fact a real-time view needs to draw it gliding. Empty for a turn-based arbiter.
+        """
+        return self._arbiter.active_motions()
+
+    def airborne_cells(self):
+        """The cells whose piece is mid-jump right now, for a renderer to animate the dodge."""
+        return self._arbiter.airborne_cells()
 
     def snapshot(self):
         """Return a read-only GameSnapshot of the current board and game-over flag."""

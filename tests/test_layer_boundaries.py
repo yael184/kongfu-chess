@@ -33,9 +33,12 @@ ALLOWED_IMPORTS = {
     "input": {"model", "input"},
     "text_io": {"model", "text_io"},
     "texttests": {"texttests"},
+    # The view reads the model (piece kinds/colors/states) and draws; it holds no chess and no
+    # timing, gets its engine and controller injected, and never reads config.
+    "view": {"model", "view"},
     # The composition root exists precisely to know everyone.
     "composition": {"composition", "config", "engine", "input", "model", "realtime", "rules",
-                    "text_io", "texttests"},
+                    "text_io", "texttests", "view"},
 }
 MAIN_ALLOWED = {"composition", "config", "text_io", "texttests"}
 

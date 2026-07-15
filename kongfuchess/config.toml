@@ -16,6 +16,22 @@ jump_duration_ms = 1000
 # Board token that represents an empty cell.
 empty = "."
 
+[assets]
+# Graphics for the OpenCV view surface, resolved relative to this package (the kongfuchess/ dir).
+# The board background image and the per-piece sprite folders. A piece named by <symbol><color>
+# (e.g. QW = queen white, KB = king black) has states/<state>/sprites/<n>.png + config.json.
+board_image = "assets/board.png"
+pieces_dir = "assets/pieces"
+# Starting position the GUI loads when none is given on the command line.
+default_board = "boards/standard.txt"
+# White/black folder suffixes, and the state-folder each situation animates. Re-skinning the game
+# (different art, different folder names) is a config change, never a code change in view/.
+white_suffix = "W"
+black_suffix = "B"
+idle_state = "idle"
+move_state = "move"
+jump_state = "jump"
+
 # --- Pieces -------------------------------------------------------------------------------------
 # The pieces in play. Everything about a piece is here: its name, the letter it is spelled with in
 # the text format, how it moves, and whether taking it wins the game.
