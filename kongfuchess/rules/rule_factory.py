@@ -12,11 +12,11 @@ pattern; MOVEMENT_BUILDERS turns that name into a PieceRule. So:
 A spec is read duck-typed (name/symbol/movement/directions/offsets/promotes_to/
 victory_on_capture), so rules/ does not import config — it just reads what it is handed.
 """
-from model.piece import PieceKind
-from rules.piece_rules import (
+from kongfuchess.model.piece import PieceKind
+from kongfuchess.rules.piece_rules import (
     CombinedRule, LeapingRule, PawnRule, PieceRuleRegistry, SlidingRule, UnknownMovementError,
 )
-from rules.rule_set import ChessRuleSet
+from kongfuchess.rules.rule_set import ChessRuleSet
 
 
 def _build_sliding(spec):

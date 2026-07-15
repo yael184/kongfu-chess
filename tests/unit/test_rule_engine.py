@@ -1,10 +1,10 @@
 # tests/unit/test_rule_engine.py
-from model.board import Board
-from model.piece import Piece, Color, PieceKind
-from model.position import Position
-import config
-from rules.rule_factory import build_registry
-from rules.rule_engine import (
+from kongfuchess.model.board import Board
+from kongfuchess.model.piece import Piece, Color, PieceKind
+from kongfuchess.model.position import Position
+import kongfuchess.config as config
+from kongfuchess.rules.rule_factory import build_registry
+from kongfuchess.rules.rule_engine import (
     RuleEngine, MoveValidation,
     REASON_OK, REASON_OUTSIDE_BOARD, REASON_EMPTY_SOURCE,
     REASON_FRIENDLY_DESTINATION, REASON_ILLEGAL_PIECE_MOVE,

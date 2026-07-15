@@ -1,6 +1,6 @@
 # tests/test_config.py
 # Tests for the config access layer that loads values from an external TOML file.
-import config
+import kongfuchess.config as config
 
 
 def test_load_returns_the_values_from_the_repo_config():

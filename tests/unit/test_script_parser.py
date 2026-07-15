@@ -1,7 +1,7 @@
 # tests/unit/test_script_parser.py
 import pytest
 
-from texttests.script_parser import ScriptParser, ScriptParseError
+from kongfuchess.texttests.script_parser import ScriptParser, ScriptParseError
 
 
 def test_splits_board_section_and_commands():

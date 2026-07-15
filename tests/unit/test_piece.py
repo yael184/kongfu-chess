@@ -1,8 +1,8 @@
 # tests/unit/test_piece.py
 import dataclasses
 
-from model.piece import Piece, Color, PieceKind, PieceState
-from model.position import Position
+from kongfuchess.model.piece import Piece, Color, PieceKind, PieceState
+from kongfuchess.model.position import Position
 
 
 def test_piece_holds_its_fields():

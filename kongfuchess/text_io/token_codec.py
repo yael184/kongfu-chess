@@ -1,5 +1,5 @@
 # text_io/token_codec.py
-from model.piece import Color, PieceKind
+from kongfuchess.model.piece import Color, PieceKind
 
 # Colors are a genuinely closed set — a piece belongs to one of two sides — so unlike piece kinds
 # they stay an enum, and their prefixes stay here.

@@ -1,8 +1,8 @@
 # tests/unit/test_token_codec.py
-import config
-from model.piece import Color, Piece, PieceKind
-from model.position import Position
-from text_io.token_codec import TokenCodec, codec_for
+import kongfuchess.config as config
+from kongfuchess.model.piece import Color, Piece, PieceKind
+from kongfuchess.model.position import Position
+from kongfuchess.text_io.token_codec import TokenCodec, codec_for
 
 
 def standard_codec():

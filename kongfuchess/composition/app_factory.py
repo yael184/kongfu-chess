@@ -11,19 +11,19 @@ Note what is *not* here: any list of pieces. Which pieces exist, how they move, 
 spelled and what wins the game all come from the config, so adding a piece reaches neither this
 file nor any other.
 """
-from engine.game_engine import GameEngine
-from input.board_mapper import BoardMapper
-from input.controller import Controller
-from model.effects import EffectApplier
-from model.game_state import GameState
-from realtime.real_time_arbiter import RealTimeArbiter
-from rules.rule_factory import build_rule_set
-from text_io.board_parser import BoardParser
-from text_io.board_printer import BoardPrinter
-from text_io.piece_factory import PieceFactory
-from text_io.token_codec import codec_for
-from texttests.commands import duration_command, pixel_command, print_board_command
-from texttests.script_runner import ScriptRunner
+from kongfuchess.engine.game_engine import GameEngine
+from kongfuchess.input.board_mapper import BoardMapper
+from kongfuchess.input.controller import Controller
+from kongfuchess.model.effects import EffectApplier
+from kongfuchess.model.game_state import GameState
+from kongfuchess.realtime.real_time_arbiter import RealTimeArbiter
+from kongfuchess.rules.rule_factory import build_rule_set
+from kongfuchess.text_io.board_parser import BoardParser
+from kongfuchess.text_io.board_printer import BoardPrinter
+from kongfuchess.text_io.piece_factory import PieceFactory
+from kongfuchess.text_io.token_codec import codec_for
+from kongfuchess.texttests.commands import duration_command, pixel_command, print_board_command
+from kongfuchess.texttests.script_runner import ScriptRunner
 
 
 def build_codec(cfg):

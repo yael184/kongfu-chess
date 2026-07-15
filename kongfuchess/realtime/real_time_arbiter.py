@@ -1,9 +1,9 @@
 # realtime/real_time_arbiter.py
 from dataclasses import dataclass
 
-from model.arrival import ArrivalContext
-from model.piece import PieceState
-from realtime.motion import Motion
+from kongfuchess.model.arrival import ArrivalContext
+from kongfuchess.model.piece import PieceState
+from kongfuchess.realtime.motion import Motion
 
 
 @dataclass(frozen=True)

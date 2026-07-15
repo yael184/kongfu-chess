@@ -8,11 +8,11 @@ end through the real stack: parser, engine, rules, real-time arbiter, printer.
 Every one of them is defined entirely in a config file. Not a line of production code outside
 config.toml is involved in adding them, which is the property the architecture is supposed to have.
 """
-import config
-from composition import app_factory
-from model.piece import PieceKind
-from model.position import Position
-from texttests.script_runner import ScriptRunner
+import kongfuchess.config as config
+from kongfuchess.composition import app_factory
+from kongfuchess.model.piece import PieceKind
+from kongfuchess.model.position import Position
+from kongfuchess.texttests.script_runner import ScriptRunner
 
 # A game with a piece that does not exist in chess: the "dragon", which leaps two cells sideways
 # or downwards, over anything in the way. Nothing in model/, rules/, realtime/, engine/, input/ or

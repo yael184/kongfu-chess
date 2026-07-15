@@ -1,12 +1,12 @@
 # tests/unit/test_board_printer.py
-import config
-from engine.game_engine import GameEngine
-from model.game_state import GameState
-from model.piece import PieceKind
-from text_io.board_parser import BoardParser
-from text_io.board_printer import BoardPrinter
-from text_io.piece_factory import PieceFactory
-from text_io.token_codec import TokenCodec, codec_for
+import kongfuchess.config as config
+from kongfuchess.engine.game_engine import GameEngine
+from kongfuchess.model.game_state import GameState
+from kongfuchess.model.piece import PieceKind
+from kongfuchess.text_io.board_parser import BoardParser
+from kongfuchess.text_io.board_printer import BoardPrinter
+from kongfuchess.text_io.piece_factory import PieceFactory
+from kongfuchess.text_io.token_codec import TokenCodec, codec_for
 
 
 def standard_codec():

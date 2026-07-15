@@ -1,12 +1,12 @@
 # tests/unit/test_board_parser.py
 import pytest
 
-import config
-from model.piece import Color, PieceKind
-from model.position import Position
-from text_io.board_parser import BoardParser, BoardParseError
-from text_io.piece_factory import PieceFactory
-from text_io.token_codec import TokenCodec, codec_for
+import kongfuchess.config as config
+from kongfuchess.model.piece import Color, PieceKind
+from kongfuchess.model.position import Position
+from kongfuchess.text_io.board_parser import BoardParser, BoardParseError
+from kongfuchess.text_io.piece_factory import PieceFactory
+from kongfuchess.text_io.token_codec import TokenCodec, codec_for
 
 
 def parser(codec=None):

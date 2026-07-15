@@ -1,8 +1,8 @@
 # model/effects.py
 from dataclasses import dataclass
 
-from model.piece import Piece, PieceKind, PieceState
-from model.position import Position
+from kongfuchess.model.piece import Piece, PieceKind, PieceState
+from kongfuchess.model.position import Position
 
 
 class Effect:

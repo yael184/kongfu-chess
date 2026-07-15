@@ -1,6 +1,6 @@
 # rules/piece_rules.py
-from model.piece import Color
-from model.position import Position
+from kongfuchess.model.piece import Color
+from kongfuchess.model.position import Position
 
 
 class UnknownPieceKindError(Exception):

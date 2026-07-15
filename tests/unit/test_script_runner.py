@@ -1,10 +1,10 @@
 # tests/unit/test_script_runner.py
 import pytest
 
-from texttests.commands import (
+from kongfuchess.texttests.commands import (
     UnknownCommandError, duration_command, pixel_command, print_board_command,
 )
-from texttests.script_runner import ScriptRunner
+from kongfuchess.texttests.script_runner import ScriptRunner
 
 
 class Spy:

@@ -1,6 +1,6 @@
 # tests/unit/test_board_mapper.py
-from input.board_mapper import BoardMapper
-from model.position import Position
+from kongfuchess.input.board_mapper import BoardMapper
+from kongfuchess.model.position import Position
 
 
 def test_maps_pixels_to_cells():

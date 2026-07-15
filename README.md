@@ -15,7 +15,7 @@ pip install -r requirements-dev.txt   # dev + test dependencies (pytest, pytest-
 The game reads a single text document from stdin containing a starting board and a list of commands:
 
 ```bash
-python main.py < input.txt
+python -m kongfuchess.main < input.txt
 ```
 
 ### Input format

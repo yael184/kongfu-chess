@@ -1,5 +1,5 @@
 # texttests/script_runner.py
-from texttests.commands import UnknownCommandError
+from kongfuchess.texttests.commands import UnknownCommandError
 
 
 class ScriptRunner:

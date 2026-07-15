@@ -1,5 +1,5 @@
 # input/board_mapper.py
-from model.position import Position
+from kongfuchess.model.position import Position
 
 
 class BoardMapper:

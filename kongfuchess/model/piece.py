@@ -2,7 +2,7 @@
 import enum
 from dataclasses import dataclass
 
-from model.position import Position
+from kongfuchess.model.position import Position
 
 
 class Color(enum.Enum):

@@ -1,9 +1,9 @@
 # tests/unit/test_board.py
 import pytest
 
-from model.board import Board, DuplicateOccupancyError, OutOfBoundsError, PieceNotFoundError
-from model.piece import Piece, Color, PieceKind
-from model.position import Position
+from kongfuchess.model.board import Board, DuplicateOccupancyError, OutOfBoundsError, PieceNotFoundError
+from kongfuchess.model.piece import Piece, Color, PieceKind
+from kongfuchess.model.position import Position
 
 
 def make_piece(piece_id, cell, kind=PieceKind.PAWN, color=Color.WHITE):

@@ -2,7 +2,7 @@
 # End-to-end through main(): parse a Board:/Commands: document and run it on the new stack.
 from io import StringIO
 
-import main
+import kongfuchess.main as main
 
 
 def run(document):

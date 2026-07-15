@@ -20,6 +20,9 @@ import pathlib
 import pytest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+# Source now lives in the kongfuchess/ package; imports are namespaced as kongfuchess.<layer>.<...>.
+SRC = ROOT / "kongfuchess"
+PACKAGE = "kongfuchess"
 
 # The layers, and the project modules each is allowed to import. A layer may always import itself.
 ALLOWED_IMPORTS = {
@@ -39,20 +42,31 @@ MAIN_ALLOWED = {"composition", "config", "text_io", "texttests"}
 PROJECT_MODULES = set(ALLOWED_IMPORTS) | {"config", "main"}
 
 
+def _layer_of(dotted):
+    """The project layer a dotted import names, e.g. kongfuchess.model.board -> 'model'.
+
+    Everything lives under the kongfuchess package, so the layer is the component after it.
+    """
+    parts = dotted.split(".")
+    if parts[0] != PACKAGE or len(parts) < 2:
+        return None
+    return parts[1]
+
+
 def imported_project_modules(path):
-    """The project (non-stdlib) top-level modules a source file imports."""
+    """The project (non-stdlib) layers a source file imports."""
     tree = ast.parse(path.read_text(encoding="utf-8"))
     imported = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            imported.update(alias.name.split(".")[0] for alias in node.names)
+            imported.update(_layer_of(alias.name) for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
-            imported.add(node.module.split(".")[0])
-    return imported & PROJECT_MODULES
+            imported.add(_layer_of(node.module))
+    return (imported - {None}) & PROJECT_MODULES
 
 
 def source_files(layer):
-    return sorted(p for p in (ROOT / layer).glob("*.py") if p.name != "__init__.py")
+    return sorted(p for p in (SRC / layer).glob("*.py") if p.name != "__init__.py")
 
 
 @pytest.mark.parametrize("layer", sorted(ALLOWED_IMPORTS))
@@ -113,5 +127,5 @@ def test_only_the_composition_root_reads_config():
 
 
 def test_main_only_talks_to_the_composition_root():
-    forbidden = imported_project_modules(ROOT / "main.py") - MAIN_ALLOWED
+    forbidden = imported_project_modules(SRC / "main.py") - MAIN_ALLOWED
     assert not forbidden, f"main.py imports {sorted(forbidden)}; it should wire via composition/."

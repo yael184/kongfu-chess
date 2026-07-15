@@ -1,7 +1,7 @@
 # tests/unit/test_piece_factory.py
-from model.piece import Color, PieceKind
-from model.position import Position
-from text_io.piece_factory import PieceFactory
+from kongfuchess.model.piece import Color, PieceKind
+from kongfuchess.model.position import Position
+from kongfuchess.text_io.piece_factory import PieceFactory
 
 
 def test_creates_a_piece_at_the_given_cell():

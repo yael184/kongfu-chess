@@ -1,6 +1,6 @@
 # rules/rule_set.py
-from model.effects import EndGame, MovePiece, RemovePiece, TransformPiece
-from rules.rule_engine import RuleEngine
+from kongfuchess.model.effects import EndGame, MovePiece, RemovePiece, TransformPiece
+from kongfuchess.rules.rule_engine import RuleEngine
 
 
 class ChessRuleSet:

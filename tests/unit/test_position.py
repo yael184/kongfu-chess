@@ -1,5 +1,5 @@
 # tests/unit/test_position.py
-from model.position import Position
+from kongfuchess.model.position import Position
 
 
 def test_positions_with_same_row_and_col_are_equal():

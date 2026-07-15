@@ -1,10 +1,10 @@
 # tests/unit/test_controller.py
-from engine.game_engine import GameSnapshot, MoveResult, REASON_OK
-from input.board_mapper import BoardMapper
-from input.controller import Controller
-from model.board import BoardSnapshot
-from model.piece import Piece, Color, PieceKind
-from model.position import Position
+from kongfuchess.engine.game_engine import GameSnapshot, MoveResult, REASON_OK
+from kongfuchess.input.board_mapper import BoardMapper
+from kongfuchess.input.controller import Controller
+from kongfuchess.model.board import BoardSnapshot
+from kongfuchess.model.piece import Piece, Color, PieceKind
+from kongfuchess.model.position import Position
 
 
 def snapshot(width, height, placements=None, game_over=False):

@@ -3,7 +3,7 @@
 # promotion, and jump/dodge. Mirrors the external text-test scenarios.
 from io import StringIO
 
-import main
+import kongfuchess.main as main
 
 
 def run(document):

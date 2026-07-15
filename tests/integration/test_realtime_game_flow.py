@@ -1,13 +1,13 @@
 # tests/integration/test_realtime_game_flow.py
 # End-to-end vertical slice: GameEngine + the real rules + the real RealTimeArbiter over the model,
 # wired through the composition root exactly as main.py wires it.
-import config
-from composition import app_factory
-from engine.game_engine import REASON_OK, REASON_GAME_OVER, REASON_MOTION_IN_PROGRESS
-from model.board import Board
-from model.piece import Piece, Color, PieceKind, PieceState
-from model.position import Position
-from rules.rule_engine import REASON_ILLEGAL_PIECE_MOVE
+import kongfuchess.config as config
+from kongfuchess.composition import app_factory
+from kongfuchess.engine.game_engine import REASON_OK, REASON_GAME_OVER, REASON_MOTION_IN_PROGRESS
+from kongfuchess.model.board import Board
+from kongfuchess.model.piece import Piece, Color, PieceKind, PieceState
+from kongfuchess.model.position import Position
+from kongfuchess.rules.rule_engine import REASON_ILLEGAL_PIECE_MOVE
 
 
 def build_game():

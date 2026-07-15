@@ -1,15 +1,15 @@
 # tests/unit/test_piece_rules.py
 import pytest
 
-import config
-from model.board import Board
-from model.piece import Piece, Color, PieceKind
-from model.position import Position
-from rules.piece_rules import (
+import kongfuchess.config as config
+from kongfuchess.model.board import Board
+from kongfuchess.model.piece import Piece, Color, PieceKind
+from kongfuchess.model.position import Position
+from kongfuchess.rules.piece_rules import (
     CombinedRule, LeapingRule, PawnRule, PieceRule, PieceRuleRegistry, SlidingRule,
     UnknownPieceKindError,
 )
-from rules.rule_factory import build_registry
+from kongfuchess.rules.rule_factory import build_registry
 
 # The standard pieces are not hard-coded anywhere any more: they are built from config.toml, so
 # these tests exercise the rules the real game actually plays with.

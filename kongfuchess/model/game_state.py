@@ -1,7 +1,7 @@
 # model/game_state.py
 from dataclasses import dataclass
 
-from model.board import Board
+from kongfuchess.model.board import Board
 
 
 @dataclass

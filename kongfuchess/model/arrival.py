@@ -1,9 +1,9 @@
 # model/arrival.py
 from dataclasses import dataclass
 
-from model.board_view import BoardView
-from model.piece import Piece
-from model.position import Position
+from kongfuchess.model.board_view import BoardView
+from kongfuchess.model.piece import Piece
+from kongfuchess.model.position import Position
 
 
 @dataclass(frozen=True)

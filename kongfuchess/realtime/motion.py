@@ -1,8 +1,8 @@
 # realtime/motion.py
 from dataclasses import dataclass
 
-from model.piece import Piece
-from model.position import Position
+from kongfuchess.model.piece import Piece
+from kongfuchess.model.position import Position
 
 
 def cell_distance(source: Position, destination: Position) -> int:

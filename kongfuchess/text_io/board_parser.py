@@ -1,6 +1,6 @@
 # text_io/board_parser.py
-from model.board import Board
-from model.position import Position
+from kongfuchess.model.board import Board
+from kongfuchess.model.position import Position
 
 
 class BoardParseError(Exception):

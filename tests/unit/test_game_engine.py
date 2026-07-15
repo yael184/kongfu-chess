@@ -1,17 +1,17 @@
 # tests/unit/test_game_engine.py
 import types
 
-from engine.game_engine import (
+from kongfuchess.engine.game_engine import (
     GameEngine, MoveResult, GameSnapshot,
     REASON_OK, REASON_GAME_OVER, REASON_MOTION_IN_PROGRESS,
 )
-from model.board import Board
-from model.game_state import GameState
-from model.piece import Piece, Color, PieceKind
-from model.position import Position
-import config
-from rules.rule_factory import build_registry
-from rules.rule_engine import RuleEngine, REASON_ILLEGAL_PIECE_MOVE, REASON_FRIENDLY_DESTINATION
+from kongfuchess.model.board import Board
+from kongfuchess.model.game_state import GameState
+from kongfuchess.model.piece import Piece, Color, PieceKind
+from kongfuchess.model.position import Position
+import kongfuchess.config as config
+from kongfuchess.rules.rule_factory import build_registry
+from kongfuchess.rules.rule_engine import RuleEngine, REASON_ILLEGAL_PIECE_MOVE, REASON_FRIENDLY_DESTINATION
 
 
 def pc(piece_id, color, kind, row, col):

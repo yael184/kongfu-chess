@@ -1,8 +1,8 @@
 # model/board_view.py
 from typing import Iterable, Optional, Protocol, Sequence
 
-from model.piece import Piece
-from model.position import Position
+from kongfuchess.model.piece import Piece
+from kongfuchess.model.position import Position
 
 
 class BoardView(Protocol):

@@ -1,11 +1,11 @@
 # tests/integration/test_controller_flow.py
 # End-to-end: Controller -> GameEngine -> rules + RealTimeArbiter over the model.
 # Wired through the composition root, exactly as main.py wires it.
-import config
-from composition import app_factory
-from model.board import Board
-from model.piece import Piece, Color, PieceKind
-from model.position import Position
+import kongfuchess.config as config
+from kongfuchess.composition import app_factory
+from kongfuchess.model.board import Board
+from kongfuchess.model.piece import Piece, Color, PieceKind
+from kongfuchess.model.position import Position
 
 
 def build_controller():

@@ -27,7 +27,7 @@ Feed a ``Board:`` / ``Commands:`` document to ``main.py`` on stdin:
 
 .. code-block:: bash
 
-   python main.py < input.txt
+   python -m kongfuchess.main < input.txt
 
 Example document:
 

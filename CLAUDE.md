@@ -19,7 +19,7 @@ pytest -k pawn                              # run tests matching an expression
 Run the game itself by feeding a board+commands document to `main.py` on stdin:
 
 ```bash
-python main.py < input.txt
+python -m kongfuchess.main < input.txt
 ```
 
 ## Input format

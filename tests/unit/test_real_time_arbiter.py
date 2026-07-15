@@ -1,11 +1,11 @@
 # tests/unit/test_real_time_arbiter.py
-from model.board import Board
-from model.effects import EffectApplier
-from model.piece import Piece, Color, PieceKind, PieceState
-from model.position import Position
-from realtime.real_time_arbiter import RealTimeArbiter
-import config
-from rules.rule_factory import build_rule_set
+from kongfuchess.model.board import Board
+from kongfuchess.model.effects import EffectApplier
+from kongfuchess.model.piece import Piece, Color, PieceKind, PieceState
+from kongfuchess.model.position import Position
+from kongfuchess.realtime.real_time_arbiter import RealTimeArbiter
+import kongfuchess.config as config
+from kongfuchess.rules.rule_factory import build_rule_set
 
 
 def pc(piece_id, color, kind, row, col):
@@ -175,7 +175,7 @@ def test_the_arbiter_applies_whatever_the_rules_return():
     Here an arrival deletes the *arriving* piece and ends the game — nothing like chess. The
     arbiter cannot tell the difference, which is the point: changing the game never touches it.
     """
-    from model.effects import EndGame, RemovePiece
+    from kongfuchess.model.effects import EndGame, RemovePiece
 
     class NonsenseRules:
         def resolve_arrival(self, context):

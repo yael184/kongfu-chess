@@ -1,7 +1,7 @@
 # tests/unit/test_motion.py
-from model.piece import Piece, Color, PieceKind
-from model.position import Position
-from realtime.motion import Motion, cell_distance
+from kongfuchess.model.piece import Piece, Color, PieceKind
+from kongfuchess.model.position import Position
+from kongfuchess.realtime.motion import Motion, cell_distance
 
 
 def piece_at(row, col):

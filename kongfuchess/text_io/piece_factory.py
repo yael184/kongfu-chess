@@ -1,5 +1,5 @@
 # text_io/piece_factory.py
-from model.piece import Piece
+from kongfuchess.model.piece import Piece
 
 
 class PieceFactory:

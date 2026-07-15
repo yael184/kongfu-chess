@@ -1,10 +1,10 @@
 # main.py
 import sys
 
-import config
-from composition import app_factory
-from text_io.board_parser import BoardParseError
-from texttests.script_parser import ScriptParser, ScriptParseError
+import kongfuchess.config as config
+from kongfuchess.composition import app_factory
+from kongfuchess.text_io.board_parser import BoardParseError
+from kongfuchess.texttests.script_parser import ScriptParser, ScriptParseError
 
 
 def main(input_stream=None):
