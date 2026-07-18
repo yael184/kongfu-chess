@@ -49,6 +49,8 @@ class AssetsConfig:
     idle_state: str
     move_state: str
     jump_state: str
+    short_rest_state: str
+    long_rest_state: str
 
 
 @dataclass(frozen=True)
@@ -98,6 +100,8 @@ def _assets_config(entry, base_dir) -> "AssetsConfig":
         idle_state=entry["idle_state"],
         move_state=entry["move_state"],
         jump_state=entry["jump_state"],
+        short_rest_state=entry["short_rest_state"],
+        long_rest_state=entry["long_rest_state"],
     )
 
 

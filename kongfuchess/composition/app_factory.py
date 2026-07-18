@@ -16,7 +16,7 @@ from kongfuchess.input.board_mapper import BoardMapper
 from kongfuchess.input.controller import Controller
 from kongfuchess.model.effects import EffectApplier
 from kongfuchess.model.game_state import GameState
-from kongfuchess.model.piece import Color, PieceKind
+from kongfuchess.model.piece import Color, PieceKind, PieceState
 from kongfuchess.realtime.collision_resolver import CollisionResolver
 from kongfuchess.realtime.real_time_arbiter import RealTimeArbiter
 from kongfuchess.rules.rule_factory import build_rule_set
@@ -26,9 +26,14 @@ from kongfuchess.text_io.piece_factory import PieceFactory
 from kongfuchess.text_io.token_codec import codec_for
 from kongfuchess.texttests.commands import duration_command, pixel_command, print_board_command
 from kongfuchess.texttests.script_runner import ScriptRunner
-from kongfuchess.view.board_renderer import BoardRenderer
 from kongfuchess.view.game_loop import GameLoop
-from kongfuchess.view.sprite_repository import SpriteRepository
+from kongfuchess.view.img import Img
+from kongfuchess.view.rendering.board_renderer import BoardRenderer
+from kongfuchess.view.rendering.board_view import BoardView
+from kongfuchess.view.rendering.cv2_renderer import Cv2Renderer
+from kongfuchess.view.rendering.overlay_renderer import OverlayRenderer
+from kongfuchess.view.rendering.piece_renderer import PieceRenderer
+from kongfuchess.view.sprites.sprite_library import SpriteLibrary
 
 
 def build_codec(cfg):
@@ -111,12 +116,27 @@ def build_piece_folders(cfg):
     return folders
 
 
-def build_renderer(cfg) -> BoardRenderer:
-    """The OpenCV frame renderer: board background plus the configured piece sprites."""
+def build_state_folders(cfg):
+    """Map each engine PieceState to the sprite-state folder it animates as (config-driven)."""
     assets = cfg.assets
-    sprites = SpriteRepository(build_piece_folders(cfg), cfg.cell_size)
-    return BoardRenderer(assets.board_image, cfg.cell_size, sprites,
-                         assets.idle_state, assets.move_state, assets.jump_state)
+    return {
+        PieceState.IDLE: assets.idle_state,
+        PieceState.MOVING: assets.move_state,
+        PieceState.JUMPING: assets.jump_state,
+        PieceState.SHORT_REST: assets.short_rest_state,
+        PieceState.LONG_REST: assets.long_rest_state,
+    }
+
+
+def build_board_view(cfg) -> BoardView:
+    """The frame coordinator: background + animated piece sprites + overlays, DI-assembled."""
+    assets = cfg.assets
+    library = SpriteLibrary(build_piece_folders(cfg), cfg.cell_size, image_loader=Img)
+    return BoardView(
+        BoardRenderer(assets.board_image, cfg.cell_size),
+        PieceRenderer(library, cfg.cell_size, build_state_folders(cfg)),
+        OverlayRenderer(cfg.cell_size),
+    )
 
 
 def build_gui_app(board, cfg, window_title, rules=None) -> GameLoop:
@@ -127,4 +147,4 @@ def build_gui_app(board, cfg, window_title, rules=None) -> GameLoop:
     """
     engine = build_engine(board, cfg, rules)
     controller = build_controller(engine, cfg)
-    return GameLoop(engine, controller, build_renderer(cfg), window_title)
+    return GameLoop(engine, controller, build_board_view(cfg), Cv2Renderer(window_title))

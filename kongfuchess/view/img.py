@@ -86,6 +86,13 @@ class Img:
                     cv2.FONT_HERSHEY_SIMPLEX, font_size,
                     color, thickness, cv2.LINE_AA)
 
+    def draw_rect(self, x, y, w, h, color=(255, 255, 255, 255), thickness=2):
+        """Draw a rectangle outline on self.img — a thin cv2 wrapper, like put_text (used for the
+        selection highlight and debug overlays)."""
+        if self.img is None:
+            raise ValueError("Image not loaded.")
+        cv2.rectangle(self.img, (x, y), (x + w, y + h), color, thickness)
+
     def show(self):
         if self.img is None:
             raise ValueError("Image not loaded.")

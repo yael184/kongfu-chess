@@ -32,9 +32,12 @@ default_board = "boards/standard.txt"
 # (different art, different folder names) is a config change, never a code change in view/.
 white_suffix = "W"
 black_suffix = "B"
+# The sprite-state folder each piece lifecycle animates as (engine state -> art folder).
 idle_state = "idle"
 move_state = "move"
 jump_state = "jump"
+short_rest_state = "short_rest"
+long_rest_state = "long_rest"
 
 # --- Pieces -------------------------------------------------------------------------------------
 # The pieces in play. Everything about a piece is here: its name, the letter it is spelled with in

@@ -28,7 +28,7 @@ python -m kongfuchess.gui                 # loads the standard starting position
 python -m kongfuchess.gui my_board.txt    # or a board grid of your own
 ```
 
-**Left-click** selects a piece and then a destination (a second click on your own piece switches the selection); **right-click** makes a piece jump in place (a dodge). Pieces **glide** between cells over their travel time, and the window closes on <kbd>Esc</kbd>. The art lives under `kongfuchess/assets/` and is entirely config-driven (`[assets]` in [config.toml](kongfuchess/config.toml)) — re-skinning changes files, not code.
+**Left-click** selects a piece and then a destination (a second click on your own piece switches the selection); **right-click** makes a piece jump in place (a dodge). Moves are **parallel** — many pieces travel at once — and each piece **rests** after acting (a long rest after a move, a short rest after a jump). Pieces **glide** between cells over their travel time. The **window is resizable** (clicks are scaled back to the right square), and it closes on <kbd>Esc</kbd>. The art lives under `kongfuchess/assets/` and is entirely config-driven (`[assets]` in [config.toml](kongfuchess/config.toml)) — re-skinning changes files, not code.
 
 ### Input format
 
@@ -80,7 +80,7 @@ All source lives in the [kongfuchess/](kongfuchess/) package (separated from `.v
 | [input/](kongfuchess/input/) | `BoardMapper` (pixels → cells) and `Controller` (click selection → `request_move`) |
 | [text_io/](kongfuchess/text_io/) | `TokenCodec` (the token format, symbols injected from config), `PieceFactory` (stable ids), `BoardParser`, `BoardPrinter` |
 | [texttests/](kongfuchess/texttests/) | `ScriptParser` (document → board + commands) and `ScriptRunner` (dispatches through an injected command table) |
-| [view/](kongfuchess/view/) | The **OpenCV surface** — `SpriteRepository`, `Animation`, `BoardRenderer` (gliding pieces, selection, banner) and the real-time `GameLoop`. Holds no chess and no timing; reads the engine snapshot and drives the injected `Controller` |
+| [view/](kongfuchess/view/) | The **OpenCV surface** (State/Strategy/DI per `final_plan.md`): `sprites/` (`SpriteState`/`AnimatedSprite`/`SpriteLibrary`), `rendering/` (a `BoardView` coordinator over `BoardRenderer`/`PieceRenderer`/`OverlayRenderer`, plus a resizable `Cv2Renderer`), and the real-time `GameLoop`. Holds no chess and no timing; reads the engine snapshot and drives the injected `Controller` |
 | [composition/](kongfuchess/composition/) | The composition root — builds and wires everything (text **and** GUI) from a `GameConfig`. The swap point for a different rule set, time model, board or surface |
 | [main.py](kongfuchess/main.py) / [gui.py](kongfuchess/gui.py) | The two entry points: a document from stdin (text), or a board file + OpenCV window (GUI) |
 | [config.py](kongfuchess/config.py) / [config.toml](kongfuchess/config.toml) | Tunables, **the pieces themselves**, and the GUI `[assets]`, loaded from an external file |

@@ -69,7 +69,8 @@ def imported_project_modules(path):
 
 
 def source_files(layer):
-    return sorted(p for p in (SRC / layer).glob("*.py") if p.name != "__init__.py")
+    # Recursive: layers may have subpackages (e.g. view/rendering, view/sprites).
+    return sorted(p for p in (SRC / layer).rglob("*.py") if p.name != "__init__.py")
 
 
 @pytest.mark.parametrize("layer", sorted(ALLOWED_IMPORTS))
