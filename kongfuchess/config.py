@@ -31,6 +31,7 @@ class PieceSpec:
     promotes_to: str = None
     victory_on_capture: bool = False
     flies_over: bool = False
+    value: int = 0
 
 
 @dataclass(frozen=True)
@@ -65,6 +66,9 @@ class GameConfig:
     long_rest_ms: int
     short_rest_ms: int
     empty_token: str
+    white_player: str = "White"
+    black_player: str = "Black"
+    panel_width: int = 0
     pieces: tuple = ()
     assets: AssetsConfig = None
 
@@ -82,6 +86,9 @@ def load(path=None) -> GameConfig:
         long_rest_ms=data["timing"].get("long_rest_ms", 2000),
         short_rest_ms=data["timing"].get("short_rest_ms", 500),
         empty_token=data["tokens"]["empty"],
+        white_player=data.get("players", {}).get("white", "White"),
+        black_player=data.get("players", {}).get("black", "Black"),
+        panel_width=data.get("panel", {}).get("width", 0),
         pieces=tuple(_piece_spec(entry) for entry in data.get("pieces", [])),
         assets=_assets_config(data.get("assets"), path.parent),
     )
@@ -115,4 +122,5 @@ def _piece_spec(entry) -> PieceSpec:
         promotes_to=entry.get("promotes_to"),
         victory_on_capture=entry.get("victory_on_capture", False),
         flies_over=entry.get("flies_over", False),
+        value=entry.get("value", 0),
     )

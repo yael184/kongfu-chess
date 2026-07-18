@@ -26,12 +26,18 @@ from kongfuchess.text_io.piece_factory import PieceFactory
 from kongfuchess.text_io.token_codec import codec_for
 from kongfuchess.texttests.commands import duration_command, pixel_command, print_board_command
 from kongfuchess.texttests.script_runner import ScriptRunner
+from kongfuchess.view.events.event_bus import EventBus
+from kongfuchess.view.events.events import CaptureResolved, MoveResolved
+from kongfuchess.view.events.observers.moves_log_observer import MovesLogObserver
+from kongfuchess.view.events.observers.score_observer import ScoreObserver
+from kongfuchess.view.events.settlement_detector import SettlementDetector
 from kongfuchess.view.game_loop import GameLoop
 from kongfuchess.view.img import Img
 from kongfuchess.view.rendering.board_renderer import BoardRenderer
 from kongfuchess.view.rendering.board_view import BoardView
 from kongfuchess.view.rendering.cv2_renderer import Cv2Renderer
 from kongfuchess.view.rendering.overlay_renderer import OverlayRenderer
+from kongfuchess.view.rendering.panel_renderer import PanelRenderer
 from kongfuchess.view.rendering.piece_renderer import PieceRenderer
 from kongfuchess.view.sprites.sprite_library import SpriteLibrary
 
@@ -128,23 +134,50 @@ def build_state_folders(cfg):
     }
 
 
-def build_board_view(cfg) -> BoardView:
-    """The frame coordinator: background + animated piece sprites + overlays, DI-assembled."""
+def build_board_view(cfg, panel_renderer=None) -> BoardView:
+    """The frame coordinator: background + animated piece sprites + overlays (+ optional panel)."""
     assets = cfg.assets
     library = SpriteLibrary(build_piece_folders(cfg), cfg.cell_size, image_loader=Img)
     return BoardView(
         BoardRenderer(assets.board_image, cfg.cell_size),
         PieceRenderer(library, cfg.cell_size, build_state_folders(cfg)),
         OverlayRenderer(cfg.cell_size),
+        panel_renderer,
     )
+
+
+def build_scoreboard(cfg):
+    """The Observer pipeline for the side panel: a bus, the score/moves-log observers subscribed to
+    it, the snapshot-diff detector that feeds it, and the panel that reads the observers.
+
+    Returns (detector, panel). The score's point table and the move symbols both come from config,
+    so there are no magic numbers or hard-coded piece letters here.
+    """
+    bus = EventBus()
+    score = ScoreObserver({spec.name: spec.value for spec in cfg.pieces})
+    moves_log = MovesLogObserver()
+    bus.subscribe(CaptureResolved, score.on_capture)
+    bus.subscribe(MoveResolved, moves_log.on_move)
+    detector = SettlementDetector(bus, {spec.name: spec.symbol for spec in cfg.pieces})
+    panel = PanelRenderer(cfg.panel_width, cfg.white_player, cfg.black_player, score, moves_log)
+    return detector, panel
 
 
 def build_gui_app(board, cfg, window_title, rules=None) -> GameLoop:
     """The full real-time OpenCV surface, wired end to end around an already-parsed board.
 
     The swap point for the graphical surface, exactly as build_script_runner is for the text one:
-    same engine, same controller, a different way in (mouse) and out (pixels).
+    same engine, same controller, a different way in (mouse) and out (pixels). A configured
+    panel_width adds the names/score/moves-log side panel and its event pipeline.
     """
     engine = build_engine(board, cfg, rules)
     controller = build_controller(engine, cfg)
-    return GameLoop(engine, controller, build_board_view(cfg), Cv2Renderer(window_title))
+
+    detector = panel = None
+    board_width_px = None
+    if cfg.panel_width and cfg.panel_width > 0:
+        detector, panel = build_scoreboard(cfg)
+        board_width_px = board.width * cfg.cell_size
+
+    return GameLoop(engine, controller, build_board_view(cfg, panel), Cv2Renderer(window_title),
+                    settlement_detector=detector, board_width_px=board_width_px)

@@ -20,6 +20,15 @@ short_rest_ms = 500
 # Board token that represents an empty cell.
 empty = "."
 
+[players]
+# Names shown on the side panel. Static for now (multiplayer wiring is a later concern).
+white = "White"
+black = "Black"
+
+[panel]
+# Width in pixels of the side panel that shows names, score and the moves log (0 hides it).
+width = 300
+
 [assets]
 # Graphics for the OpenCV view surface, resolved relative to this package (the kongfuchess/ dir).
 # The board background image and the per-piece sprite folders. A piece named by <symbol><color>
@@ -58,24 +67,32 @@ long_rest_state = "long_rest"
 [[pieces]]
 name = "rook"
 symbol = "R"
+# Point value for the score panel (captured -> capturer's side).
+value = 5
 movement = "slide"
 directions = [[0, 1], [0, -1], [1, 0], [-1, 0]]
 
 [[pieces]]
 name = "bishop"
 symbol = "B"
+# Point value for the score panel (captured -> capturer's side).
+value = 3
 movement = "slide"
 directions = [[1, 1], [1, -1], [-1, 1], [-1, -1]]
 
 [[pieces]]
 name = "queen"
 symbol = "Q"
+# Point value for the score panel (captured -> capturer's side).
+value = 9
 movement = "slide"
 directions = [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]
 
 [[pieces]]
 name = "knight"
 symbol = "N"
+# Point value for the score panel (captured -> capturer's side).
+value = 3
 movement = "leap"
 offsets = [[2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2]]
 # The knight flies over collisions: it is exempt from mid-path and simultaneous-move collisions,
@@ -85,6 +102,8 @@ flies_over = true
 [[pieces]]
 name = "king"
 symbol = "K"
+# Point value for the score panel (captured -> capturer's side).
+value = 0
 movement = "leap"
 offsets = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]]
 victory_on_capture = true
@@ -92,5 +111,7 @@ victory_on_capture = true
 [[pieces]]
 name = "pawn"
 symbol = "P"
+# Point value for the score panel (captured -> capturer's side).
+value = 1
 movement = "pawn"
 promotes_to = "queen"
