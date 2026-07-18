@@ -17,6 +17,7 @@ from kongfuchess.input.controller import Controller
 from kongfuchess.model.effects import EffectApplier
 from kongfuchess.model.game_state import GameState
 from kongfuchess.model.piece import Color, PieceKind
+from kongfuchess.realtime.collision_resolver import CollisionResolver
 from kongfuchess.realtime.real_time_arbiter import RealTimeArbiter
 from kongfuchess.rules.rule_factory import build_rule_set
 from kongfuchess.text_io.board_parser import BoardParser
@@ -66,6 +67,9 @@ def build_engine(board, cfg, rules=None) -> GameEngine:
         effect_applier=EffectApplier(),
         ms_per_cell=cfg.ms_per_cell,
         jump_duration_ms=cfg.jump_duration_ms,
+        long_rest_ms=cfg.long_rest_ms,
+        short_rest_ms=cfg.short_rest_ms,
+        collision_resolver=CollisionResolver(rules, EffectApplier()),
     )
     return GameEngine(GameState(board=board), arbiter, rules)
 

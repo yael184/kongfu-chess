@@ -3,11 +3,11 @@ import types
 
 from kongfuchess.engine.game_engine import (
     GameEngine, MoveResult, GameSnapshot,
-    REASON_OK, REASON_GAME_OVER, REASON_MOTION_IN_PROGRESS,
+    REASON_OK, REASON_GAME_OVER, REASON_PIECE_BUSY,
 )
 from kongfuchess.model.board import Board
 from kongfuchess.model.game_state import GameState
-from kongfuchess.model.piece import Piece, Color, PieceKind
+from kongfuchess.model.piece import Piece, Color, PieceKind, PieceState
 from kongfuchess.model.position import Position
 import kongfuchess.config as config
 from kongfuchess.rules.rule_factory import build_registry
@@ -28,14 +28,10 @@ def state_with(width, height, *pieces, game_over=False):
 class FakeArbiter:
     """Test double for RealTimeArbiter — records interactions and returns a canned outcome."""
 
-    def __init__(self, active=False, game_over=False):
-        self._active = active
+    def __init__(self, game_over=False):
         self._game_over = game_over
         self.started = []
         self.advanced = None
-
-    def has_active_motion(self):
-        return self._active
 
     def start_motion(self, board, source, destination):
         self.started.append((source, destination))
@@ -62,18 +58,23 @@ def test_request_move_rejected_when_game_over_without_calling_rules():
     assert arbiter.started == []
 
 
-def test_request_move_rejected_when_a_motion_is_in_progress():
-    state = state_with(3, 3, pc("r", Color.WHITE, PieceKind.ROOK, 0, 0))
-    arbiter = FakeArbiter(active=True)
+def test_request_move_rejected_when_the_source_piece_is_busy():
+    # A piece that is not IDLE (here mid-move) is busy — rejected before the rules are consulted.
+    rook = pc("r", Color.WHITE, PieceKind.ROOK, 0, 0)
+    rook.state = PieceState.MOVING
+    state = state_with(3, 3, rook)
+    arbiter = FakeArbiter()
     engine = GameEngine(state, arbiter, ExplodingRuleEngine())
     result = engine.request_move(Position(0, 0), Position(0, 2))
-    assert result == MoveResult(False, REASON_MOTION_IN_PROGRESS)
+    assert result == MoveResult(False, REASON_PIECE_BUSY)
     assert arbiter.started == []
 
 
-def test_game_over_guard_takes_precedence_over_motion_guard():
-    state = state_with(3, 3, pc("r", Color.WHITE, PieceKind.ROOK, 0, 0), game_over=True)
-    arbiter = FakeArbiter(active=True)
+def test_game_over_guard_takes_precedence_over_busy_guard():
+    rook = pc("r", Color.WHITE, PieceKind.ROOK, 0, 0)
+    rook.state = PieceState.MOVING
+    state = state_with(3, 3, rook, game_over=True)
+    arbiter = FakeArbiter()
     engine = GameEngine(state, arbiter, ExplodingRuleEngine())
     assert engine.request_move(Position(0, 0), Position(0, 2)).reason == REASON_GAME_OVER
 

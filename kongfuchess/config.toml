@@ -11,6 +11,10 @@ cell_size = 100
 ms_per_cell = 1000
 # Duration of a "jump in place" (dodge); while airborne a piece is protected.
 jump_duration_ms = 1000
+# Cooldown after acting: a long rest after a move, a short rest after a jump lands. While resting a
+# piece is busy (cannot be commanded); a short-resting piece still protects its cell.
+long_rest_ms = 2000
+short_rest_ms = 500
 
 [tokens]
 # Board token that represents an empty cell.
@@ -71,6 +75,9 @@ name = "knight"
 symbol = "N"
 movement = "leap"
 offsets = [[2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2]]
+# The knight flies over collisions: it is exempt from mid-path and simultaneous-move collisions,
+# and it is the only piece that may capture a friendly piece (by arriving on it).
+flies_over = true
 
 [[pieces]]
 name = "king"

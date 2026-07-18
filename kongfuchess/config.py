@@ -30,6 +30,7 @@ class PieceSpec:
     offsets: tuple = ()
     promotes_to: str = None
     victory_on_capture: bool = False
+    flies_over: bool = False
 
 
 @dataclass(frozen=True)
@@ -59,6 +60,8 @@ class GameConfig:
     cell_size: int
     ms_per_cell: int
     jump_duration_ms: int
+    long_rest_ms: int
+    short_rest_ms: int
     empty_token: str
     pieces: tuple = ()
     assets: AssetsConfig = None
@@ -74,6 +77,8 @@ def load(path=None) -> GameConfig:
         cell_size=data["board"]["cell_size"],
         ms_per_cell=data["timing"]["ms_per_cell"],
         jump_duration_ms=data["timing"]["jump_duration_ms"],
+        long_rest_ms=data["timing"].get("long_rest_ms", 2000),
+        short_rest_ms=data["timing"].get("short_rest_ms", 500),
         empty_token=data["tokens"]["empty"],
         pieces=tuple(_piece_spec(entry) for entry in data.get("pieces", [])),
         assets=_assets_config(data.get("assets"), path.parent),
@@ -105,4 +110,5 @@ def _piece_spec(entry) -> PieceSpec:
         offsets=tuple(tuple(step) for step in entry.get("offsets", [])),
         promotes_to=entry.get("promotes_to"),
         victory_on_capture=entry.get("victory_on_capture", False),
+        flies_over=entry.get("flies_over", False),
     )

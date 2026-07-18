@@ -42,10 +42,16 @@ class PieceState(enum.Enum):
     """A piece's lifecycle flag — nothing more.
 
     It does not store path, destination, elapsed time, speed, interpolation, or arrival logic;
-    those belong to Motion and RealTimeArbiter.
+    those belong to Motion and RealTimeArbiter. The rest/jump states are still pure lifecycle:
+    they say *what phase* a piece is in (acting, cooling down), never for how long or along which
+    path — the arbiter owns the timers. A piece in JUMPING or SHORT_REST protects its cell; a piece
+    in any state other than IDLE is busy and cannot be commanded.
     """
     IDLE = "idle"
     MOVING = "moving"
+    JUMPING = "jumping"
+    SHORT_REST = "short_rest"
+    LONG_REST = "long_rest"
     CAPTURED = "captured"
 
 

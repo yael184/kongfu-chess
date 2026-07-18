@@ -1,10 +1,12 @@
 # engine/game_engine.py
 from dataclasses import dataclass
 
+from kongfuchess.model.piece import PieceState
+
 # Application-level MoveResult reasons. Rule-level reasons are copied from MoveValidation.
 REASON_OK = "ok"
 REASON_GAME_OVER = "game_over"
-REASON_MOTION_IN_PROGRESS = "motion_in_progress"
+REASON_PIECE_BUSY = "piece_busy"
 
 
 @dataclass(frozen=True)
@@ -63,11 +65,11 @@ class GameSnapshot:
 class GameEngine:
     """Application-service layer and public command boundary (for Controller and TextTestRunner).
 
-    It orchestrates only: it enforces the application-level guards (game over, an active motion in
-    the common route), delegates legality to the rules, starts motions and advances time through the
-    arbiter, sets game_over when the arbiter reports the game has ended, and exposes a read-only
-    snapshot. It holds no piece-specific movement logic, rendering code, pixel mapping, text
-    parsing, or test-runner logic — and no opinion on what ends a game.
+    It orchestrates only: it enforces the application-level guards (game over, and that the moved
+    piece is IDLE rather than busy), delegates legality to the rules, starts motions and advances
+    time through the arbiter, sets game_over when the arbiter reports the game has ended, and exposes
+    a read-only snapshot. It holds no piece-specific movement logic, rendering code, pixel mapping,
+    text parsing, or test-runner logic — and no opinion on what ends a game.
 
     Every collaborator is injected — the engine names no concrete class, so it is unaware of which
     rules are in play and which time model is running. Only composition/app_factory decides that.
@@ -88,11 +90,18 @@ class GameEngine:
         self._rules = rules
 
     def request_move(self, source, destination):
-        """Validate and, if accepted, start a move. Application guards run before the rules."""
+        """Validate and, if accepted, start a move. Application guards run before the rules.
+
+        Moves are real-time and parallel: any number of pieces may be in flight at once. The only
+        per-move gate is that the source piece must be IDLE — a piece already moving, jumping, or
+        resting is busy and cannot be commanded again until it settles.
+        """
         if self._state.game_over:
             return MoveResult.rejected(REASON_GAME_OVER)
-        if self._arbiter.has_active_motion():
-            return MoveResult.rejected(REASON_MOTION_IN_PROGRESS)
+
+        piece = self._state.board.piece_at(source)
+        if piece is not None and piece.state is not PieceState.IDLE:
+            return MoveResult.rejected(REASON_PIECE_BUSY)
 
         validation = self._rules.validate_move(self._state.board, source, destination)
         if not validation.is_valid:

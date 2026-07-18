@@ -18,7 +18,13 @@ class PieceRule:
     This is the strategy every piece type plugs into, and it is the whole extension point for new
     pieces: a rule may move a piece by any pattern at all, and may turn it into anything on arrival
     (or nothing), without a single caller changing.
+
+    `flies_over` marks a piece that ignores collisions (the knight): it is exempt from mid-path and
+    simultaneous-move collisions and is the only piece that may capture a friendly. It is set from
+    configuration by the rule factory, so no layer decides this by checking a piece's kind.
     """
+
+    flies_over = False
 
     def legal_destinations(self, board, piece):
         """Return the set of Positions this piece may move to (captures included, no mutation)."""

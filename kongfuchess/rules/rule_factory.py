@@ -51,7 +51,9 @@ def build_rule(spec):
     builder = MOVEMENT_BUILDERS.get(spec.movement)
     if builder is None:
         raise UnknownMovementError(spec.movement)
-    return builder(spec)
+    rule = builder(spec)
+    rule.flies_over = getattr(spec, "flies_over", False)
+    return rule
 
 
 def build_registry(specs) -> PieceRuleRegistry:

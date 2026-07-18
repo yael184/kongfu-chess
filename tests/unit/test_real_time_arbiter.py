@@ -24,13 +24,17 @@ def chess_rules():
     return build_rule_set(config.load().pieces)
 
 
-def make_arbiter(rules=None, ms_per_cell=1000, jump_duration_ms=1000):
+def make_arbiter(rules=None, ms_per_cell=1000, jump_duration_ms=1000,
+                 long_rest_ms=2000, short_rest_ms=500, collision_resolver=None):
     """The arbiter has no rules of its own: what an arrival means is always injected."""
     return RealTimeArbiter(
         rules=rules if rules is not None else chess_rules(),
         effect_applier=EffectApplier(),
         ms_per_cell=ms_per_cell,
         jump_duration_ms=jump_duration_ms,
+        long_rest_ms=long_rest_ms,
+        short_rest_ms=short_rest_ms,
+        collision_resolver=collision_resolver,
     )
 
 
@@ -71,8 +75,10 @@ def test_motion_resolves_on_arrival():
     assert board.piece_at(Position(0, 0)) is None
     assert board.piece_at(Position(0, 2)) is rook
     assert rook.cell == Position(0, 2)
-    assert rook.state == PieceState.IDLE
+    assert rook.state == PieceState.LONG_REST     # a move is followed by a cooldown
     assert arbiter.has_active_motion() is False
+    arbiter.advance_time(2000)                     # long rest elapses
+    assert rook.state == PieceState.IDLE
 
 
 def test_single_square_takes_1000ms_exactly():
@@ -155,6 +161,29 @@ def test_attacker_arriving_after_landing_captures_normally():
     arbiter.advance_time(3000)
     assert board.piece_at(Position(1, 0)) is rook   # normal capture
     assert king.state == PieceState.CAPTURED
+
+
+def test_jump_runs_through_short_rest_back_to_idle():
+    king = pc("k", Color.WHITE, PieceKind.KING, 1, 1)
+    board = board_with(3, 3, king)
+    arbiter = make_arbiter()                        # jump 1000ms, short_rest 500ms
+    arbiter.request_jump(board, Position(1, 1))
+    assert king.state == PieceState.JUMPING
+    arbiter.advance_time(1100)                      # past the 1000ms jump
+    assert king.state == PieceState.SHORT_REST
+    arbiter.advance_time(500)                       # past the 500ms short rest (total 1600)
+    assert king.state == PieceState.IDLE
+    assert board.piece_at(Position(1, 1)) is king
+
+
+def test_a_resting_piece_cannot_jump_again():
+    king = pc("k", Color.WHITE, PieceKind.KING, 1, 1)
+    board = board_with(3, 3, king)
+    arbiter = make_arbiter()
+    arbiter.request_jump(board, Position(1, 1))      # now JUMPING
+    arbiter.request_jump(board, Position(1, 1))      # busy -> ignored, no second jump scheduled
+    arbiter.advance_time(1100)
+    assert king.state == PieceState.SHORT_REST       # still just the one jump's aftermath
 
 
 def test_cannot_jump_a_moving_piece_or_an_empty_cell():

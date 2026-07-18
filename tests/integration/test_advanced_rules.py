@@ -43,8 +43,10 @@ def test_black_pawn_promotes_to_queen(capsys):
 
 
 def test_promoted_queen_moves_diagonally(capsys):
+    # The pawn promotes on arrival, then must wait out its post-move long rest before the queen can
+    # move again (moves now carry a cooldown).
     run("Board:\n. . .\n. wP .\n. . .\nCommands:\n"
-        "click 150 150\nclick 150 50\nwait 1000\nclick 150 50\nclick 250 150\nwait 1000\nprint board\n")
+        "click 150 150\nclick 150 50\nwait 3000\nclick 150 50\nclick 250 150\nwait 1000\nprint board\n")
     assert output(capsys) == ". . .\n. . wQ\n. . ."
 
 

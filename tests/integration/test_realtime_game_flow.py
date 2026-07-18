@@ -3,7 +3,7 @@
 # wired through the composition root exactly as main.py wires it.
 import kongfuchess.config as config
 from kongfuchess.composition import app_factory
-from kongfuchess.engine.game_engine import REASON_OK, REASON_GAME_OVER, REASON_MOTION_IN_PROGRESS
+from kongfuchess.engine.game_engine import REASON_OK, REASON_GAME_OVER, REASON_PIECE_BUSY
 from kongfuchess.model.board import Board
 from kongfuchess.model.piece import Piece, Color, PieceKind, PieceState
 from kongfuchess.model.position import Position
@@ -31,11 +31,13 @@ def test_move_takes_time_and_board_updates_only_on_arrival():
     assert board.piece_at(Position(0, 1)) is rook
 
 
-def test_second_move_rejected_while_a_motion_is_active():
+def test_a_busy_piece_cannot_be_moved_again():
+    # Moves are parallel now, but a single piece is busy while it travels: a second command for the
+    # same piece is rejected until it settles.
     engine, board, rook, king = build_game()
     engine.request_move(Position(0, 0), Position(0, 1))
     result = engine.request_move(Position(0, 0), Position(1, 0))
-    assert result.reason == REASON_MOTION_IN_PROGRESS
+    assert result.reason == REASON_PIECE_BUSY
 
 
 def test_illegal_move_is_rejected_before_any_motion():
