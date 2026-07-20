@@ -28,14 +28,16 @@ python -m kongfuchess.gui my_board.txt    # or a board grid of your own
 ```
 
 - **Left-click** selects a piece, then a destination. A second click on your own piece switches the
-  selection; a click outside the board cancels it.
+  selection; a click outside the board cancels it. The selected piece's **legal destinations** are
+  shaded green.
 - **Right-click** makes a piece jump in place (a dodge).
 - Moves are **parallel** — many pieces travel at once — and each piece **rests** after acting, so it
-  cannot be commanded again until it settles.
+  cannot be commanded again until it settles. A resting cell is shaded yellow, **draining from the
+  top down like an hourglass** until the piece is ready again.
 - Pieces **glide** between cells over their travel time and animate per state
   (idle / move / jump / short rest / long rest).
 - A **side panel** shows player names, a live score and the moves log.
-- The **window is resizable** — clicks are scaled back to the right square. <kbd>Esc</kbd> closes it.
+- The **window is resizable** — clicks land on the right square at any zoom. <kbd>Esc</kbd> or the window's X button ends the game.
 
 The art lives under `kongfuchess/assets/` and is entirely config-driven
 (`[assets]` in [config.toml](kongfuchess/config.toml)) — re-skinning changes files, not code.
