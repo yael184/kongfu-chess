@@ -11,6 +11,7 @@ the engine owns the rules.
 import time
 
 from kongfuchess.view.rendering.renderer import CLICK, JUMP, QUIT
+from kongfuchess.view.rendering.view_state import ViewState
 
 
 class GameLoop:
@@ -36,13 +37,27 @@ class GameLoop:
                 snapshot = self._engine.snapshot()
                 if self._detector is not None:
                     self._detector.observe(snapshot)
-                frame = self._board_view.render(
-                    snapshot, self._engine.active_motions(), self._controller.selected, dt_ms)
+                frame = self._board_view.render(self._view_state(snapshot), dt_ms)
                 self._renderer.draw_frame(frame)
                 if self._handle(self._renderer.poll_events()):
                     break
         finally:
             self._renderer.close()
+
+    def _view_state(self, snapshot):
+        """Gather this frame's facts from the engine and the controller — asking, never deciding.
+
+        The legal destinations are the rules' answer about whatever the user selected; the engine
+        returns nothing for an empty selection, so no emptiness check belongs here.
+        """
+        selected = self._controller.selected
+        return ViewState(
+            snapshot=snapshot,
+            motions=tuple(self._engine.active_motions()),
+            rests=tuple(self._engine.rest_windows()),
+            selected=selected,
+            targets=tuple(self._engine.legal_destinations(selected)),
+        )
 
     def _handle(self, events) -> bool:
         """Apply input events; return True when the user asked to quit."""

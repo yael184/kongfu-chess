@@ -4,6 +4,9 @@
 It draws nothing itself: it holds three focused collaborators and calls them in order each frame —
 BoardRenderer for the background, PieceRenderer for the pieces, OverlayRenderer for everything else.
 A new kind of overlay is a change to OverlayRenderer only, never here.
+
+Everything one frame needs arrives as a single ViewState, so adding a fact to draw does not ripple
+through this signature (see view/rendering/view_state.py).
 """
 
 
@@ -14,10 +17,11 @@ class BoardView:
         self._overlay = overlay_renderer
         self._panel = panel_renderer
 
-    def render(self, snapshot, motions, selected, dt_ms):
+    def render(self, state, dt_ms):
+        snapshot = state.snapshot
         frame = self._board.fresh_frame(snapshot.width, snapshot.height)
-        self._pieces.draw(frame, snapshot, motions, dt_ms)
-        self._overlay.draw(frame, snapshot, selected)
+        self._pieces.draw(frame, snapshot, state.motions, dt_ms)
+        self._overlay.draw(frame, state)
         if self._panel is not None:
             return self._panel.compose(frame)   # widen the canvas with the side panel
         return frame

@@ -93,6 +93,22 @@ class Img:
             raise ValueError("Image not loaded.")
         cv2.rectangle(self.img, (x, y), (x + w, y + h), color, thickness)
 
+    def fill_rect(self, x, y, w, h, color=(255, 255, 255, 255), opacity=1.0):
+        """Blend a translucent filled rectangle into self.img — the fill counterpart of draw_rect.
+
+        `opacity` is 0..1 (1.0 paints solid). Only the colour channels are blended: the image's own
+        alpha is left alone, so shading a BGRA frame never punches a hole in it. A rectangle that
+        falls partly outside the image is clipped rather than raising, and an empty one is a no-op.
+        """
+        if self.img is None:
+            raise ValueError("Image not loaded.")
+        x, y = max(0, x), max(0, y)
+        roi = self.img[y:y + h, x:x + w]
+        if roi.size == 0 or w <= 0 or h <= 0:
+            return
+        fill = np.full_like(roi[..., :3], color[:3])
+        roi[..., :3] = cv2.addWeighted(fill, opacity, roi[..., :3], 1.0 - opacity, 0.0)
+
     def show(self):
         if self.img is None:
             raise ValueError("Image not loaded.")

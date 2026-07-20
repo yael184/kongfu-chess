@@ -1,6 +1,7 @@
 """BoardView is a coordinator: it draws nothing itself, only delegates to its three renderers in
 order. Fakes stand in for all three, so this runs with no window and no assets."""
 from kongfuchess.view.rendering.board_view import BoardView
+from kongfuchess.view.rendering.view_state import ViewState
 
 
 class FakeBoardRenderer:
@@ -26,7 +27,7 @@ class FakeOverlayRenderer:
     def __init__(self):
         self.calls = 0
 
-    def draw(self, frame, snapshot, selected):
+    def draw(self, frame, state):
         self.calls += 1
 
 
@@ -40,7 +41,7 @@ def test_render_delegates_to_all_three_and_returns_the_board_frame():
     board, pieces, overlay = FakeBoardRenderer(), FakePieceRenderer(), FakeOverlayRenderer()
     view = BoardView(board, pieces, overlay)
 
-    frame = view.render(FakeSnapshot(), motions=[], selected=None, dt_ms=16)
+    frame = view.render(ViewState(snapshot=FakeSnapshot()), dt_ms=16)
 
     assert frame == "FRAME"
     assert (board.calls, pieces.calls, overlay.calls) == (1, 1, 1)

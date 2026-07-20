@@ -7,6 +7,7 @@ is reported as a gliding motion — the renderer path a window would show.
 import kongfuchess.config as config
 from kongfuchess.composition import app_factory
 from kongfuchess.model.position import Position
+from kongfuchess.view.rendering.view_state import ViewState
 
 
 def _engine_and_view():
@@ -17,7 +18,14 @@ def _engine_and_view():
 
 
 def _frame(engine, view, dt_ms=0, selected=None):
-    return view.render(engine.snapshot(), engine.active_motions(), selected, dt_ms)
+    state = ViewState(
+        snapshot=engine.snapshot(),
+        motions=tuple(engine.active_motions()),
+        rests=tuple(engine.rest_windows()),
+        selected=selected,
+        targets=tuple(engine.legal_destinations(selected)),
+    )
+    return view.render(state, dt_ms)
 
 
 def test_idle_frame_matches_the_board_geometry():

@@ -10,7 +10,7 @@ from kongfuchess.model.game_state import GameState
 from kongfuchess.model.piece import Piece, Color, PieceKind, PieceState
 from kongfuchess.model.position import Position
 import kongfuchess.config as config
-from kongfuchess.rules.rule_factory import build_registry
+from kongfuchess.rules.rule_factory import build_registry, build_rule_set
 from kongfuchess.rules.rule_engine import RuleEngine, REASON_ILLEGAL_PIECE_MOVE, REASON_FRIENDLY_DESTINATION
 
 
@@ -148,3 +148,48 @@ def test_snapshot_is_decoupled_from_later_board_changes():
     snapshot = GameEngine(state, FakeArbiter(), RuleEngine(build_registry(config.load().pieces))).snapshot()
     state.board.remove_piece(rook)
     assert snapshot.piece_at(Position(0, 0)) is rook  # snapshot kept the placement
+
+
+# --- the render windows the GUI reads: legal destinations and running cooldowns ---------------
+
+def chess_rules():
+    """The full rule set (not just the validator) — legal_destinations lives on the facade."""
+    return build_rule_set(config.load().pieces)
+
+
+def test_legal_destinations_passes_the_rules_answer_through():
+    rook = pc("r", Color.WHITE, PieceKind.ROOK, 0, 0)
+    engine = GameEngine(state_with(3, 1, rook), FakeArbiter(), chess_rules())
+
+    assert set(engine.legal_destinations(Position(0, 0))) == {Position(0, 1), Position(0, 2)}
+
+
+def test_legal_destinations_stops_at_a_friend_and_includes_an_enemy():
+    rook = pc("r", Color.WHITE, PieceKind.ROOK, 0, 0)
+    friend = pc("f", Color.WHITE, PieceKind.ROOK, 0, 2)
+    enemy = pc("e", Color.BLACK, PieceKind.ROOK, 1, 0)
+    engine = GameEngine(state_with(3, 3, rook, friend, enemy), FakeArbiter(), chess_rules())
+
+    destinations = set(engine.legal_destinations(Position(0, 0)))
+    assert Position(0, 1) in destinations        # up to the friend
+    assert Position(0, 2) not in destinations    # never onto the friend
+    assert Position(1, 0) in destinations        # the enemy is a capture
+
+
+def test_legal_destinations_of_an_empty_cell_is_empty():
+    engine = GameEngine(state_with(3, 3), FakeArbiter(), chess_rules())
+    assert engine.legal_destinations(Position(1, 1)) == ()
+
+
+def test_legal_destinations_of_no_selection_is_empty():
+    """The GUI passes whatever is selected, which is None most of the time."""
+    engine = GameEngine(state_with(3, 3), FakeArbiter(), chess_rules())
+    assert engine.legal_destinations(None) == ()
+
+
+def test_rest_windows_are_passed_through_from_the_arbiter():
+    arbiter = FakeArbiter()
+    arbiter.rest_windows = lambda: ["a cooldown"]
+    engine = GameEngine(state_with(3, 3), arbiter, chess_rules())
+
+    assert engine.rest_windows() == ["a cooldown"]

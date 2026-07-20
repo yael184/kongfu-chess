@@ -55,3 +55,16 @@ class MotionView:
     source: Position
     destination: Position
     progress: float
+
+
+@dataclass(frozen=True)
+class RestView:
+    """A read-only view of a piece's cooldown for rendering: which cell is resting and how much of
+    the wait is left (`remaining`, 1.0 the instant it starts and 0.0 as it ends).
+
+    The sibling of MotionView for the *other* thing time does to a piece. A renderer draws a
+    countdown from it — a draining square — without touching the clock or the live phase. It is
+    pure timing: nothing here knows why the piece is waiting, only that it is.
+    """
+    cell: Position
+    remaining: float

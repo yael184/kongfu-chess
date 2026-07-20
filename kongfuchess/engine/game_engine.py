@@ -80,8 +80,10 @@ class GameEngine:
       - request_jump(board, cell)
       - advance_time(ms) -> outcome, where outcome exposes a boolean `game_over`
       - active_motions() -> read-only motion views; airborne_cells() -> cells (for a renderer)
+      - rest_windows() -> read-only cooldown views (for a renderer)
     The rules collaborator is expected to provide:
       - validate_move(board, source, destination) -> a result with `is_valid` and `reason`
+      - legal_destinations(board, piece) -> the cells that piece may move to
     """
 
     def __init__(self, game_state, arbiter, rules):
@@ -134,6 +136,26 @@ class GameEngine:
         is the extra fact a real-time view needs to draw it gliding. Empty for a turn-based arbiter.
         """
         return self._arbiter.active_motions()
+
+    def rest_windows(self):
+        """Read-only views of the cooldowns running right now, for a renderer to draw a countdown.
+
+        The board snapshot says a piece is LONG_REST but not *how much longer*; this is that extra
+        fact. Empty for an arbiter without cooldowns.
+        """
+        return self._arbiter.rest_windows()
+
+    def legal_destinations(self, cell):
+        """Every cell the piece on `cell` may move to, for a view to highlight. Empty for an empty
+        cell, so a caller may pass whatever the user selected.
+
+        A pure rules question, asked and passed straight through: the engine adds no opinion of its
+        own, and its own guards (game over, piece busy) belong to request_move, not to this.
+        """
+        piece = self._state.board.piece_at(cell) if cell is not None else None
+        if piece is None:
+            return ()
+        return tuple(self._rules.legal_destinations(self._state.board, piece))
 
     def airborne_cells(self):
         """The cells whose piece is mid-jump right now, for a renderer to animate the dodge."""

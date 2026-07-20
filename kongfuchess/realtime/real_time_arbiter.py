@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 
 from kongfuchess.model.arrival import ArrivalContext
 from kongfuchess.model.piece import PieceState
-from kongfuchess.realtime.motion import Motion, MotionView
+from kongfuchess.realtime.motion import Motion, MotionView, RestView
 
 # A piece protects its cell while it is jumping or short-resting after a jump.
 _PROTECTING_STATES = (PieceState.JUMPING, PieceState.SHORT_REST)
@@ -27,9 +27,22 @@ class _Phase:
 
     This holds *timing only* — no chess. The segment end times are absolute, so one large tick
     settles the whole chain correctly rather than restarting a segment from the current clock.
+
+    `start_ms` and `end_ms` span the *whole* chain and are kept as the segments are consumed, so the
+    wait can still be reported as a fraction once segments have been popped. A jump therefore reads
+    as one continuous countdown across JUMPING and SHORT_REST rather than two restarting ones.
     """
     piece: object
     segments: list = field(default_factory=list)  # [(PieceState, ends_at_ms), ...]
+    start_ms: int = 0
+    end_ms: int = 0
+
+    def remaining(self, now_ms) -> float:
+        """How much of the wait is left, in [0, 1] — 1.0 as it begins, 0.0 as it ends."""
+        span = self.end_ms - self.start_ms
+        if span <= 0:
+            return 0.0
+        return min(1.0, max(0.0, (self.end_ms - now_ms) / span))
 
 
 class RealTimeArbiter:
@@ -80,6 +93,13 @@ class RealTimeArbiter:
         return [MotionView(m.piece, m.source, m.destination, m.progress(self._clock_ms))
                 for m in self._motions]
 
+    def rest_windows(self):
+        """Read-only views of the pieces currently waiting out a cooldown, each sampled at the
+        current clock, for the renderer to draw a countdown. Pure timing data, like active_motions:
+        a cell and how much of its wait is left. Empty for an arbiter with no cooldowns."""
+        return [RestView(phase.piece.cell, phase.remaining(self._clock_ms))
+                for phase in self._phases]
+
     def airborne_cells(self):
         """The cells whose piece is mid-jump right now — for the renderer's jump animation."""
         return frozenset(phase.piece.cell for phase in self._phases
@@ -108,7 +128,7 @@ class RealTimeArbiter:
         short_end = jump_end + self._short_rest_ms
         self._protected_until[piece.id] = short_end
         self._begin_phase(piece, [(PieceState.JUMPING, jump_end),
-                                  (PieceState.SHORT_REST, short_end)])
+                                  (PieceState.SHORT_REST, short_end)], self._clock_ms)
 
     def advance_time(self, ms) -> AdvanceResult:
         """Advance the clock, settle mid-flight collisions, resolve arrivals, then age lifecycles."""
@@ -151,7 +171,8 @@ class RealTimeArbiter:
             # The rest is measured from the moment of arrival, not the (possibly larger) tick-end
             # clock, so a single coarse advance settles the cooldown at the right time.
             self._begin_phase(motion.piece,
-                              [(PieceState.LONG_REST, motion.arrival_ms + self._long_rest_ms)])
+                              [(PieceState.LONG_REST, motion.arrival_ms + self._long_rest_ms)],
+                              motion.arrival_ms)
         return ended
 
     def _is_protected_on_arrival(self, motion) -> bool:
@@ -164,10 +185,14 @@ class RealTimeArbiter:
             return False
         return motion.arrival_ms <= self._protected_until.get(occupant.id, -1)
 
-    def _begin_phase(self, piece, segments):
-        """Put a piece into the first of an ordered list of timed states (jump/rest)."""
+    def _begin_phase(self, piece, segments, start_ms):
+        """Put a piece into the first of an ordered list of timed states (jump/rest).
+
+        `start_ms` is when the wait *began*, which is not always now: a move's cooldown is measured
+        from the arrival, so a coarse tick still reports the countdown from the right moment.
+        """
         piece.state = segments[0][0]
-        self._phases.append(_Phase(piece, list(segments)))
+        self._phases.append(_Phase(piece, list(segments), start_ms, segments[-1][1]))
 
     def _age_phases(self):
         """Walk each resting/jumping piece to whichever segment the clock now sits in, or IDLE."""
