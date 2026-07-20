@@ -3,7 +3,8 @@
 
 This is the only module that drives cv2's display/input (`imshow`/`waitKey`/`setMouseCallback`) — the
 same plumbing `Img.show()` uses internally, driven per-frame instead of blocking (final_plan §3).
-The window is resizable (`WINDOW_NORMAL | WINDOW_KEEPRATIO`).
+The window is resizable (`WINDOW_NORMAL | WINDOW_KEEPRATIO`). It reports QUIT both on <Esc> and when
+the user dismisses the window with its X button — see `_was_dismissed`.
 
 **Mouse coordinates arrive already in canvas (image) pixels.** OpenCV's highgui backends undo the
 window's own scaling before invoking the callback, so a click on a window shown at any zoom is
@@ -33,9 +34,23 @@ class Cv2Renderer:
     def poll_events(self):
         key = cv2.waitKey(self._frame_delay_ms) & 0xFF
         events, self._pending = self._pending, []
-        if key == _ESC_KEY:
+        if key == _ESC_KEY or self._was_dismissed():
             events.append(InputEvent(QUIT))
         return events
+
+    def _was_dismissed(self) -> bool:
+        """True once the user has closed the window with its X button.
+
+        cv2 delivers no close event — the window is simply gone, and the *next* `imshow` silently
+        recreates it. Without this check the game loop never learns the window was dismissed, draws
+        another frame, and the window reappears in the same state; the only way out is Ctrl-C.
+        """
+        if not self._created:
+            return False
+        try:
+            return cv2.getWindowProperty(self._title, cv2.WND_PROP_VISIBLE) < 1
+        except cv2.error:
+            return True
 
     def close(self):
         cv2.destroyAllWindows()
