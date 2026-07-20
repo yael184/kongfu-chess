@@ -43,6 +43,7 @@ class AssetsConfig:
     in view/.
     """
     board_image: Path
+    board_image_cells: int          # how many cells across the board artwork depicts
     pieces_dir: Path
     default_board: Path
     white_suffix: str
@@ -100,6 +101,7 @@ def _assets_config(entry, base_dir) -> "AssetsConfig":
         return None
     return AssetsConfig(
         board_image=base_dir / entry["board_image"],
+        board_image_cells=entry["board_image_cells"],
         pieces_dir=base_dir / entry["pieces_dir"],
         default_board=base_dir / entry["default_board"],
         white_suffix=entry["white_suffix"],

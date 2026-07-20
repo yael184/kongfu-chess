@@ -139,7 +139,7 @@ def build_board_view(cfg, panel_renderer=None) -> BoardView:
     assets = cfg.assets
     library = SpriteLibrary(build_piece_folders(cfg), cfg.cell_size, image_loader=Img)
     return BoardView(
-        BoardRenderer(assets.board_image, cfg.cell_size),
+        BoardRenderer(assets.board_image, cfg.cell_size, assets.board_image_cells),
         PieceRenderer(library, cfg.cell_size, build_state_folders(cfg)),
         OverlayRenderer(cfg.cell_size),
         panel_renderer,

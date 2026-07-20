@@ -34,6 +34,10 @@ width = 300
 # The board background image and the per-piece sprite folders. A piece named by <symbol><color>
 # (e.g. QW = queen white, KB = king black) has states/<state>/sprites/<n>.png + config.json.
 board_image = "assets/board.png"
+# How many cells across the artwork depicts. The renderer scales one *depicted square* to one cell
+# and tiles from there, so a board that is not the artwork's size still gets squares that line up
+# with its cells. An even number tiles seamlessly (the light/dark alternation continues).
+board_image_cells = 8
 pieces_dir = "assets/pieces"
 # Starting position the GUI loads when none is given on the command line.
 default_board = "boards/standard.txt"
