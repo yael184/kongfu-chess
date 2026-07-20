@@ -1,19 +1,40 @@
-"""The mouse-coordinate translation for the resizable window — pure math, no window opened."""
-from kongfuchess.view.rendering.cv2_renderer import scale_point
+"""The mouse-coordinate contract for the resizable window — no window opened.
+
+OpenCV hands the callback coordinates already expressed in canvas (image) pixels, whatever size the
+window is shown at. The renderer must therefore pass them through untouched: rescaling them by the
+window size applies the zoom twice and lands clicks on the wrong square.
+"""
+import cv2
+
+from kongfuchess.view.rendering.cv2_renderer import Cv2Renderer
+from kongfuchess.view.rendering.renderer import CLICK, JUMP
 
 
-def test_a_click_in_a_shrunken_window_maps_up_to_canvas_pixels():
-    # Window shown at 400x400, board canvas 800x800: a click at (100,100) is (200,200) on the board.
-    assert scale_point(100, 100, 400, 400, 800, 800) == (200, 200)
+def _click(renderer, event, x, y):
+    renderer._on_mouse(event, x, y, flags=0, param=None)
+    return renderer._pending
 
 
-def test_a_click_in_an_enlarged_window_maps_down_to_canvas_pixels():
-    assert scale_point(400, 400, 1600, 1600, 800, 800) == (200, 200)
+def test_a_left_click_becomes_a_click_event_at_the_reported_pixels():
+    renderer = Cv2Renderer("t")
+    (event,) = _click(renderer, cv2.EVENT_LBUTTONDOWN, 53, 61)
+    assert (event.kind, event.x, event.y) == (CLICK, 53, 61)
 
 
-def test_identity_when_the_window_is_shown_at_canvas_size():
-    assert scale_point(53, 61, 800, 800, 800, 800) == (53, 61)
+def test_a_right_click_becomes_a_jump_event_at_the_reported_pixels():
+    renderer = Cv2Renderer("t")
+    (event,) = _click(renderer, cv2.EVENT_RBUTTONDOWN, 340, 7)
+    assert (event.kind, event.x, event.y) == (JUMP, 340, 7)
 
 
-def test_a_degenerate_window_size_falls_back_to_passthrough():
-    assert scale_point(10, 20, 0, 0, 800, 800) == (10, 20)
+def test_coordinates_are_never_rescaled_by_the_window_size():
+    # The frame drawn is irrelevant to the mapping: whatever zoom the window is at, the coordinates
+    # the callback reports are canvas pixels already.
+    renderer = Cv2Renderer("t")
+    (event,) = _click(renderer, cv2.EVENT_LBUTTONDOWN, 799, 799)
+    assert (event.x, event.y) == (799, 799)
+
+
+def test_other_mouse_events_are_ignored():
+    renderer = Cv2Renderer("t")
+    assert _click(renderer, cv2.EVENT_MOUSEMOVE, 10, 20) == []
