@@ -19,3 +19,4 @@ class ViewState:
     rests: tuple = ()                      # cooldowns running now, for the countdown overlay
     selected: object = None                # the selected cell, or None
     targets: tuple = ()                    # cells the selected piece may move to
+    rejected: object = None                # the fading refused-move flash (RejectionFlash), or None

@@ -9,6 +9,7 @@ import pytest
 from kongfuchess.model.position import Position
 from kongfuchess.realtime.motion import RestView
 from kongfuchess.view.img import Img
+from kongfuchess.view.rendering.move_feedback import RejectionFlash
 from kongfuchess.view.rendering.overlay_renderer import OverlayRenderer
 from kongfuchess.view.rendering.view_state import ViewState
 
@@ -63,6 +64,32 @@ def test_a_cooldown_empties_from_the_top_down(frame):
 
 def test_an_expired_cooldown_draws_nothing(frame):
     OverlayRenderer(CELL).draw(frame, _state(rests=(RestView(Position(2, 2), 0.0),)))
+
+    assert not frame.img[..., :3].any()
+
+
+def test_a_refused_move_shades_its_cell_red(frame):
+    OverlayRenderer(CELL).draw(frame, _state(rejected=RejectionFlash(Position(4, 5), 1.0)))
+
+    red = frame.img[4 * CELL + CELL // 2, 5 * CELL + CELL // 2, :3]
+    assert red[2] and not red[0] and not red[1]         # red channel only (BGR)
+    assert not _is_painted(frame, 4, 6, CELL // 2)       # the neighbour is untouched
+
+
+def test_a_faded_rejection_flash_draws_fainter_than_a_fresh_one():
+    def red_at(intensity):
+        canvas = Img()
+        canvas.img = np.zeros((CELL * 8, CELL * 8, 4), dtype=np.uint8)
+        canvas.img[..., 3] = 255
+        canvas.img[..., :3] = 200                        # a "piece" already drawn underneath
+        OverlayRenderer(CELL).draw(canvas, _state(rejected=RejectionFlash(Position(0, 0), intensity)))
+        return int(canvas.img[CELL // 2, CELL // 2, 2])
+
+    assert red_at(0.25) < red_at(1.0)                    # a dying flash tints less
+
+
+def test_a_fully_faded_rejection_draws_nothing(frame):
+    OverlayRenderer(CELL).draw(frame, _state(rejected=RejectionFlash(Position(0, 0), 0.0)))
 
     assert not frame.img[..., :3].any()
 

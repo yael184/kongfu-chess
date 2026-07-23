@@ -30,7 +30,8 @@ python -m kongfuchess.gui --white Alice --black Bob   # name the players for thi
 
 - **Left-click** selects a piece, then a destination. A second click on your own piece switches the
   selection; a click outside the board cancels it. The selected piece's **legal destinations** are
-  shaded green.
+  shaded green, and a **refused move flashes the target cell red** (an illegal move, a busy piece, or
+  a click after the game is over) so you can see the click was rejected.
 - **Right-click** makes a piece jump in place (a dodge).
 - Moves are **parallel** — many pieces travel at once — and each piece **rests** after acting, so it
   cannot be commanded again until it settles. A resting cell is shaded yellow, **draining from the
@@ -161,6 +162,7 @@ ms_per_cell = 1000       # time to cross one cell
 jump_duration_ms = 1000  # how long a jump lasts
 long_rest_ms = 2000      # cooldown after a move
 short_rest_ms = 500      # cooldown after a jump
+rejection_flash_ms = 500 # how long a refused move flashes red (0 disables it)
 
 [players]
 white = "White"          # default names on the side panel (override with --white / --black)

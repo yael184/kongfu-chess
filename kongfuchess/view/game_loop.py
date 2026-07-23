@@ -16,12 +16,13 @@ from kongfuchess.view.rendering.view_state import ViewState
 
 class GameLoop:
     def __init__(self, engine, controller, board_view, renderer,
-                 settlement_detector=None, clock=time.perf_counter):
+                 settlement_detector=None, move_feedback=None, clock=time.perf_counter):
         self._engine = engine
         self._controller = controller
         self._board_view = board_view
         self._renderer = renderer
         self._detector = settlement_detector
+        self._feedback = move_feedback
         self._clock = clock
 
     def run(self):
@@ -33,6 +34,8 @@ class GameLoop:
                 last = now
                 if dt_ms > 0:
                     self._engine.wait(dt_ms)
+                    if self._feedback is not None:
+                        self._feedback.age(dt_ms)
                 snapshot = self._engine.snapshot()
                 if self._detector is not None:
                     self._detector.observe(snapshot, self._engine.game_time_ms())
@@ -56,6 +59,7 @@ class GameLoop:
             rests=tuple(self._engine.rest_windows()),
             selected=selected,
             targets=tuple(self._engine.legal_destinations(selected)),
+            rejected=self._feedback.flash if self._feedback is not None else None,
         )
 
     def _handle(self, events) -> bool:
@@ -64,7 +68,15 @@ class GameLoop:
             if event.kind == QUIT:
                 return True
             if event.kind == CLICK:
-                self._controller.handle_click(event.x, event.y)
+                self._flash_if_refused(self._controller.handle_click(event.x, event.y))
             elif event.kind == JUMP:
                 self._controller.handle_jump(event.x, event.y)
         return False
+
+    def _flash_if_refused(self, outcome):
+        """Turn a refused move into a red flash on the cell it aimed at — the view's whole job here
+        is to surface what the engine already decided; it re-judges nothing."""
+        if self._feedback is None or outcome.result is None:
+            return
+        if not outcome.result.is_accepted:
+            self._feedback.reject(outcome.target)

@@ -69,6 +69,7 @@ class GameConfig:
     jump_duration_ms: int
     long_rest_ms: int
     short_rest_ms: int
+    rejection_flash_ms: int
     empty_token: str
     white_player: str = "White"
     black_player: str = "Black"
@@ -89,6 +90,7 @@ def load(path=None) -> GameConfig:
         jump_duration_ms=data["timing"]["jump_duration_ms"],
         long_rest_ms=data["timing"].get("long_rest_ms", 2000),
         short_rest_ms=data["timing"].get("short_rest_ms", 500),
+        rejection_flash_ms=data["timing"].get("rejection_flash_ms", 500),
         empty_token=data["tokens"]["empty"],
         white_player=data.get("players", {}).get("white", "White"),
         black_player=data.get("players", {}).get("black", "Black"),

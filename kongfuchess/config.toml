@@ -15,6 +15,9 @@ jump_duration_ms = 1000
 # piece is busy (cannot be commanded); a short-resting piece still protects its cell.
 long_rest_ms = 2000
 short_rest_ms = 500
+# How long (ms) the GUI flashes a rejected destination red after an illegal move attempt, so the
+# player sees the click was refused. Purely visual — it changes no game logic. 0 disables the flash.
+rejection_flash_ms = 500
 
 [tokens]
 # Board token that represents an empty cell.

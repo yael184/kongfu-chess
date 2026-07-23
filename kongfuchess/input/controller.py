@@ -1,4 +1,18 @@
 # input/controller.py
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class ClickOutcome:
+    """What a click did, for a surface that wants to react to it (e.g. flash a refused move).
+
+    `result` is the MoveResult of an attempted move (else None, when the click only selected,
+    switched or cancelled a selection), and `target` is the cell that move aimed at. Both are None
+    for a click that requested no move. It carries data only — deciding what to draw from it is the
+    view's job, so the controller still owns no rendering.
+    """
+    result: object = None
+    target: object = None
 
 
 class Controller:
@@ -24,8 +38,9 @@ class Controller:
     def selected(self):
         return self._selected
 
-    def handle_click(self, x: int, y: int):
-        """Handle a click; returns the MoveResult when a move was requested, otherwise None."""
+    def handle_click(self, x: int, y: int) -> ClickOutcome:
+        """Handle a click; returns a ClickOutcome (its `result`/`target` are None unless a move was
+        requested), so a surface can react to a refused move without asking the engine again."""
         cell = self._mapper.to_cell(x, y)
         snapshot = self._engine.snapshot()
         if self._selected is None:
@@ -38,22 +53,22 @@ class Controller:
 
     def _handle_first_click(self, cell, snapshot):
         if not snapshot.is_within_bounds(cell):
-            return None                       # outside-board click ignored when nothing is selected
+            return ClickOutcome()             # outside-board click ignored when nothing is selected
         if snapshot.piece_at(cell) is None:
-            return None                       # ignore first clicks on empty cells
+            return ClickOutcome()             # ignore first clicks on empty cells
         self._selected = cell                 # select this cell as the move source
-        return None
+        return ClickOutcome()
 
     def _handle_second_click(self, cell, snapshot):
         if not snapshot.is_within_bounds(cell):
             self._selected = None             # outside-board click cancels the selection, no command
-            return None
+            return ClickOutcome()
 
         selected_piece = snapshot.piece_at(self._selected)
         if selected_piece is not None and selected_piece.is_ally_of(snapshot.piece_at(cell)):
             self._selected = cell             # clicking a same-color piece switches the selection
-            return None
+            return ClickOutcome()
 
         source = self._selected
         self._selected = None                 # any move attempt clears the selection (legal or not)
-        return self._engine.request_move(source, cell)
+        return ClickOutcome(self._engine.request_move(source, cell), cell)

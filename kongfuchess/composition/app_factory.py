@@ -36,6 +36,7 @@ from kongfuchess.view.img import Img
 from kongfuchess.view.rendering.board_renderer import BoardRenderer
 from kongfuchess.view.rendering.board_view import BoardView
 from kongfuchess.view.rendering.cv2_renderer import Cv2Renderer
+from kongfuchess.view.rendering.move_feedback import MoveFeedback
 from kongfuchess.view.rendering.overlay_renderer import OverlayRenderer
 from kongfuchess.view.rendering.panel_renderer import PanelRenderer
 from kongfuchess.view.rendering.piece_renderer import PieceRenderer
@@ -201,4 +202,5 @@ def build_gui_app(board, cfg, window_title, rules=None,
         detector, panel = build_scoreboard(cfg, white_name, black_name)
 
     return GameLoop(engine, controller, build_board_view(cfg, panel), Cv2Renderer(window_title),
-                    settlement_detector=detector)
+                    settlement_detector=detector,
+                    move_feedback=MoveFeedback(cfg.rejection_flash_ms))

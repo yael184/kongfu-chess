@@ -1,7 +1,7 @@
 # tests/unit/test_controller.py
 from kongfuchess.engine.game_engine import GameSnapshot, MoveResult, REASON_OK
 from kongfuchess.input.board_mapper import BoardMapper
-from kongfuchess.input.controller import Controller
+from kongfuchess.input.controller import ClickOutcome, Controller
 from kongfuchess.model.board import BoardSnapshot
 from kongfuchess.model.piece import Piece, Color, PieceKind
 from kongfuchess.model.position import Position
@@ -65,10 +65,30 @@ def test_second_in_board_click_requests_move_and_clears_selection():
     engine = FakeEngine(snapshot(3, 3, {Position(0, 0): rook_at(0, 0)}))
     controller = Controller(engine, BoardMapper(cell_size=100))
     controller.handle_click(50, 50)             # select (0,0)
-    result = controller.handle_click(250, 50)   # (0,2)
+    outcome = controller.handle_click(250, 50)  # (0,2)
     assert engine.requests == [(Position(0, 0), Position(0, 2))]
     assert controller.selected is None
-    assert result.reason == REASON_OK
+    assert outcome.result.reason == REASON_OK
+    assert outcome.target == Position(0, 2)     # the outcome reports which cell the move aimed at
+
+
+def test_a_non_move_click_reports_an_empty_outcome():
+    engine = FakeEngine(snapshot(3, 3, {Position(0, 0): rook_at(0, 0)}))
+    controller = Controller(engine, BoardMapper(cell_size=100))
+    outcome = controller.handle_click(50, 50)   # first click selects, requests no move
+    assert outcome == ClickOutcome()            # no result and no target to react to
+
+
+def test_a_rejected_move_carries_its_result_and_target_cell():
+    engine = FakeEngine(
+        snapshot(3, 3, {Position(0, 0): rook_at(0, 0)}),
+        result=MoveResult.rejected("illegal_piece_move"),
+    )
+    controller = Controller(engine, BoardMapper(cell_size=100))
+    controller.handle_click(50, 50)             # select (0,0)
+    outcome = controller.handle_click(150, 150)  # (1,1) -> illegal for a rook
+    assert not outcome.result.is_accepted
+    assert outcome.target == Position(1, 1)     # so a surface can flash exactly that cell
 
 
 def test_selection_is_cleared_even_when_the_move_is_illegal():

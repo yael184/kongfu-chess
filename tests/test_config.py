@@ -8,6 +8,7 @@ def test_load_returns_the_values_from_the_repo_config():
     assert cfg.cell_size == 100
     assert cfg.ms_per_cell == 1000
     assert cfg.jump_duration_ms == 1000
+    assert cfg.rejection_flash_ms == 500
     assert cfg.empty_token == "."
 
 

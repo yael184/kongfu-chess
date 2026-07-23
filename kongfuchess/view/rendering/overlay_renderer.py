@@ -12,6 +12,8 @@ _TARGET_COLOR = (0, 255, 0, 255)      # BGRA green, matching the selection it be
 _TARGET_OPACITY = 0.30
 _REST_COLOR = (0, 235, 255, 255)      # BGRA yellow
 _REST_OPACITY = 0.45
+_REJECT_COLOR = (0, 0, 255, 255)      # BGRA red — a refused move
+_REJECT_OPACITY = 0.55                # at full intensity; it fades to nothing as the flash ages
 _BANNER_TEXT = "GAME OVER"
 _BANNER_SCALE = 3.0
 _BANNER_COLOR = (0, 0, 255, 255)      # BGRA red
@@ -29,6 +31,8 @@ class OverlayRenderer:
             self._draw_target(frame, target)
         if state.selected is not None:
             self._draw_selection(frame, state.selected)
+        if state.rejected is not None:
+            self._draw_rejection(frame, state.rejected)
         if state.snapshot.game_over:
             frame.put_text(_BANNER_TEXT, self._cell // 2, frame.img.shape[0] // 2,
                            _BANNER_SCALE, color=_BANNER_COLOR, thickness=_BANNER_THICKNESS)
@@ -46,6 +50,15 @@ class OverlayRenderer:
     def _draw_target(self, frame, cell):
         frame.fill_rect(cell.col * self._cell, cell.row * self._cell,
                         self._cell, self._cell, _TARGET_COLOR, _TARGET_OPACITY)
+
+    def _draw_rejection(self, frame, rejection):
+        """Tint the refused cell red, fading with the flash's intensity so it announces the refusal
+        and then dies away — the decision to draw it at all already lives on the ViewState."""
+        opacity = _REJECT_OPACITY * rejection.intensity
+        if opacity <= 0:
+            return
+        frame.fill_rect(rejection.cell.col * self._cell, rejection.cell.row * self._cell,
+                        self._cell, self._cell, _REJECT_COLOR, opacity)
 
     def _draw_selection(self, frame, cell):
         frame.draw_rect(cell.col * self._cell, cell.row * self._cell,
