@@ -8,10 +8,11 @@ from kongfuchess.view.rendering.panel_renderer import PanelRenderer
 
 class FakeScore:
     score = {"white": 3, "black": 5}
+    lead = -2
 
 
 class FakeLog:
-    entries = [("white", "N b1-c3"), ("black", "P e7-e5")]
+    entries = {"white": [(1000, "N b1-c3")], "black": [(2000, "P e7-e5")]}
 
 
 def board_frame(width=800, height=800):

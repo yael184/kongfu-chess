@@ -35,7 +35,7 @@ class GameLoop:
                     self._engine.wait(dt_ms)
                 snapshot = self._engine.snapshot()
                 if self._detector is not None:
-                    self._detector.observe(snapshot)
+                    self._detector.observe(snapshot, self._engine.game_time_ms())
                 frame = self._board_view.render(self._view_state(snapshot), dt_ms)
                 self._renderer.draw_frame(frame)
                 if self._handle(self._renderer.poll_events()):

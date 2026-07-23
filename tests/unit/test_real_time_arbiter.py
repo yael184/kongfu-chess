@@ -25,7 +25,7 @@ def chess_rules():
 
 
 def make_arbiter(rules=None, ms_per_cell=1000, jump_duration_ms=1000,
-                 long_rest_ms=2000, short_rest_ms=500, collision_resolver=None):
+                 long_rest_ms=2000, short_rest_ms=500, collision_resolver=None, speed_for=None):
     """The arbiter has no rules of its own: what an arrival means is always injected."""
     return RealTimeArbiter(
         rules=rules if rules is not None else chess_rules(),
@@ -35,11 +35,42 @@ def make_arbiter(rules=None, ms_per_cell=1000, jump_duration_ms=1000,
         long_rest_ms=long_rest_ms,
         short_rest_ms=short_rest_ms,
         collision_resolver=collision_resolver,
+        speed_for=speed_for,
     )
 
 
 def test_no_motion_active_initially():
     assert make_arbiter().has_active_motion() is False
+
+
+def test_now_ms_tracks_the_advancing_clock():
+    arbiter = make_arbiter()
+    assert arbiter.now_ms == 0
+    arbiter.advance_time(750)
+    arbiter.advance_time(250)
+    assert arbiter.now_ms == 1000
+
+
+def test_a_per_piece_speed_overrides_the_global_travel_time():
+    rook = pc("r", Color.WHITE, PieceKind.ROOK, 0, 0)
+    board = board_with(3, 3, rook)
+    # A slow piece: 3000ms per cell instead of the global 1000. speed_for is a plain piece -> ms
+    # function, so the arbiter never learns what kind the piece is.
+    arbiter = make_arbiter(ms_per_cell=1000, speed_for=lambda piece: 3000)
+    arbiter.start_motion(board, Position(0, 0), Position(0, 1))   # one cell
+    arbiter.advance_time(1000)                                    # would have arrived at global speed
+    assert board.piece_at(Position(0, 1)) is None                 # but the slow piece is still moving
+    arbiter.advance_time(2000)                                    # 3000ms total -> arrives
+    assert board.piece_at(Position(0, 1)) is rook
+
+
+def test_the_global_speed_is_the_default_when_no_override_matches():
+    rook = pc("r", Color.WHITE, PieceKind.ROOK, 0, 0)
+    board = board_with(3, 3, rook)
+    arbiter = make_arbiter(ms_per_cell=1000)                      # no speed_for -> global for all
+    arbiter.start_motion(board, Position(0, 0), Position(0, 1))
+    arbiter.advance_time(1000)
+    assert board.piece_at(Position(0, 1)) is rook
 
 
 def test_start_motion_marks_active_and_keeps_piece_on_source():

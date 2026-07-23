@@ -32,6 +32,9 @@ class PieceSpec:
     victory_on_capture: bool = False
     flies_over: bool = False
     value: int = 0
+    # How long this piece takes to cross one cell, in ms. None means "use the global ms_per_cell",
+    # so a slow piece (the spec's drone) sets its own without affecting anyone else.
+    ms_per_cell: int = None
 
 
 @dataclass(frozen=True)
@@ -125,4 +128,5 @@ def _piece_spec(entry) -> PieceSpec:
         victory_on_capture=entry.get("victory_on_capture", False),
         flies_over=entry.get("flies_over", False),
         value=entry.get("value", 0),
+        ms_per_cell=entry.get("ms_per_cell"),
     )

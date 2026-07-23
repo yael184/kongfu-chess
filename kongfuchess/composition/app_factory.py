@@ -27,7 +27,7 @@ from kongfuchess.text_io.token_codec import codec_for
 from kongfuchess.texttests.commands import duration_command, pixel_command, print_board_command
 from kongfuchess.texttests.script_runner import ScriptRunner
 from kongfuchess.view.events.event_bus import EventBus
-from kongfuchess.view.events.events import CaptureResolved, MoveResolved
+from kongfuchess.view.events.events import CaptureResolved, MoveResolved, PromotionResolved
 from kongfuchess.view.events.observers.moves_log_observer import MovesLogObserver
 from kongfuchess.view.events.observers.score_observer import ScoreObserver
 from kongfuchess.view.events.settlement_detector import SettlementDetector
@@ -66,6 +66,18 @@ def build_rules(cfg):
     return build_rule_set(cfg.pieces)
 
 
+def build_speed_for(cfg):
+    """A per-piece 'ms to cross one cell' lookup for the arbiter, from the configured speeds.
+
+    Pieces that name their own ms_per_cell (the drone) get it; everyone else falls back to the global
+    speed. This is the one place a piece's kind is turned into a duration — the arbiter is handed a
+    plain piece -> ms function and never learns what kind a piece is.
+    """
+    per_piece = {PieceKind(spec.name): spec.ms_per_cell
+                 for spec in cfg.pieces if spec.ms_per_cell is not None}
+    return lambda piece: per_piece.get(piece.kind, cfg.ms_per_cell)
+
+
 def build_engine(board, cfg, rules=None) -> GameEngine:
     """The game itself: state + the real-time model + the rules.
 
@@ -81,6 +93,7 @@ def build_engine(board, cfg, rules=None) -> GameEngine:
         long_rest_ms=cfg.long_rest_ms,
         short_rest_ms=cfg.short_rest_ms,
         collision_resolver=CollisionResolver(rules, EffectApplier()),
+        speed_for=build_speed_for(cfg),
     )
     return GameEngine(GameState(board=board), arbiter, rules)
 
@@ -146,36 +159,46 @@ def build_board_view(cfg, panel_renderer=None) -> BoardView:
     )
 
 
-def build_scoreboard(cfg):
+def build_scoreboard(cfg, white_name, black_name):
     """The Observer pipeline for the side panel: a bus, the score/moves-log observers subscribed to
     it, the snapshot-diff detector that feeds it, and the panel that reads the observers.
 
     Returns (detector, panel). The score's point table and the move symbols both come from config,
-    so there are no magic numbers or hard-coded piece letters here.
+    so there are no magic numbers or hard-coded piece letters here. The player names are passed in so
+    a caller (the GUI entry point) can override the configured defaults without touching config.
     """
     bus = EventBus()
     score = ScoreObserver({spec.name: spec.value for spec in cfg.pieces})
     moves_log = MovesLogObserver()
     bus.subscribe(CaptureResolved, score.on_capture)
+    bus.subscribe(PromotionResolved, score.on_promotion)
     bus.subscribe(MoveResolved, moves_log.on_move)
     detector = SettlementDetector(bus, {spec.name: spec.symbol for spec in cfg.pieces})
-    panel = PanelRenderer(cfg.panel_width, cfg.white_player, cfg.black_player, score, moves_log)
+    panel = PanelRenderer(cfg.panel_width, white_name, black_name, score, moves_log)
     return detector, panel
 
 
-def build_gui_app(board, cfg, window_title, rules=None) -> GameLoop:
+def build_gui_app(board, cfg, window_title, rules=None,
+                  white_name=None, black_name=None) -> GameLoop:
     """The full real-time OpenCV surface, wired end to end around an already-parsed board.
 
     The swap point for the graphical surface, exactly as build_script_runner is for the text one:
     same engine, same controller, a different way in (mouse) and out (pixels). A configured
     panel_width adds the names/score/moves-log side panel and its event pipeline.
+
+    Player names default to the configured ones, but a caller may pass its own (the GUI accepts them
+    on the command line) — so switching players is easy today and wiring a name-entry screen later
+    touches only the entry point.
     """
     engine = build_engine(board, cfg, rules)
     controller = build_controller(engine, cfg)
 
+    white_name = white_name if white_name is not None else cfg.white_player
+    black_name = black_name if black_name is not None else cfg.black_player
+
     detector = panel = None
     if cfg.panel_width and cfg.panel_width > 0:
-        detector, panel = build_scoreboard(cfg)
+        detector, panel = build_scoreboard(cfg, white_name, black_name)
 
     return GameLoop(engine, controller, build_board_view(cfg, panel), Cv2Renderer(window_title),
                     settlement_detector=detector)

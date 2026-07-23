@@ -21,7 +21,10 @@ short_rest_ms = 500
 empty = "."
 
 [players]
-# Names shown on the side panel. Static for now (multiplayer wiring is a later concern).
+# Default names shown on the side panel. Change them here, or override per game on the command line:
+#   python -m kongfuchess.gui --white Alice --black Bob
+# (a future name-entry screen fills in the same two values). Wiring for networked multiplayer names
+# is a later concern.
 white = "White"
 black = "Black"
 
@@ -67,6 +70,9 @@ long_rest_state = "long_rest"
 #
 # Optional: promotes_to = "<piece name>"   what it becomes on reaching the far edge
 #           victory_on_capture = true      capturing it ends the game
+#           ms_per_cell = <int>            this piece's own per-cell travel time (slower/faster than
+#                                          the global [timing].ms_per_cell) — e.g. a heavy "drone"
+#                                          that leaps but moves slowly. Omit to use the global speed.
 
 [[pieces]]
 name = "rook"

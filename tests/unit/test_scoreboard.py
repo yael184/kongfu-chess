@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from kongfuchess.model.piece import Color, Piece, PieceKind
 from kongfuchess.model.position import Position
 from kongfuchess.view.events.event_bus import EventBus
-from kongfuchess.view.events.events import CaptureResolved, MoveResolved
+from kongfuchess.view.events.events import CaptureResolved, MoveResolved, PromotionResolved
 from kongfuchess.view.events.observers.moves_log_observer import MovesLogObserver
 from kongfuchess.view.events.observers.score_observer import ScoreObserver
 from kongfuchess.view.events.settlement_detector import SettlementDetector
@@ -60,19 +60,32 @@ def test_an_unknown_kind_scores_nothing():
     assert score.score["white"] == 0
 
 
+def test_a_promotion_scores_the_new_kinds_value_without_any_capture():
+    score = ScoreObserver(VALUES)
+    score.on_promotion(PromotionResolved("white", "queen"))
+    assert score.score == {"white": 9, "black": 0}
+
+
+def test_lead_is_the_signed_white_minus_black_gap():
+    score = ScoreObserver(VALUES)
+    score.on_capture(CaptureResolved("black", "rook"))       # +5 white
+    score.on_capture(CaptureResolved("white", "knight"))     # +3 black
+    assert score.lead == 2
+
+
 # --- MovesLogObserver --------------------------------------------------------------------------
-def test_moves_are_logged_in_order():
+def test_moves_are_logged_per_side_in_order():
     log = MovesLogObserver()
-    log.on_move(MoveResolved("white", "N b1-c3"))
-    log.on_move(MoveResolved("black", "P e7-e5"))
-    assert log.entries == [("white", "N b1-c3"), ("black", "P e7-e5")]
+    log.on_move(MoveResolved("white", "N b1-c3", 1000))
+    log.on_move(MoveResolved("black", "P e7-e5", 2000))
+    assert log.entries == {"white": [(1000, "N b1-c3")], "black": [(2000, "P e7-e5")]}
 
 
-def test_the_log_is_bounded_to_its_limit():
+def test_each_sides_log_is_bounded_to_its_limit():
     log = MovesLogObserver(limit=3)
     for i in range(5):
-        log.on_move(MoveResolved("white", f"m{i}"))
-    assert [t for _, t in log.entries] == ["m2", "m3", "m4"]
+        log.on_move(MoveResolved("white", f"m{i}", i))
+    assert [t for _, t in log.entries["white"]] == ["m2", "m3", "m4"]
 
 
 # --- SettlementDetector (snapshot diff) --------------------------------------------------------
@@ -93,17 +106,30 @@ def _collecting_bus():
     bus, events = EventBus(), []
     bus.subscribe(MoveResolved, events.append)
     bus.subscribe(CaptureResolved, events.append)
+    bus.subscribe(PromotionResolved, events.append)
     return bus, events
 
 
-def test_a_moved_piece_publishes_a_move_with_algebraic_text():
+def test_a_moved_piece_publishes_a_move_with_algebraic_text_and_server_time():
     bus, events = _collecting_bus()
     detector = SettlementDetector(bus, {"knight": "N"})
     knight = piece("n", PieceKind.KNIGHT, Color.WHITE, 7, 1)   # b1 on an 8-high board
-    detector.observe(FakeSnapshot([knight]))
+    detector.observe(FakeSnapshot([knight]), now_ms=0)
     knight.cell = Position(5, 2)                               # -> c3
-    detector.observe(FakeSnapshot([knight]))
-    assert events == [MoveResolved("white", "N b1-c3")]
+    detector.observe(FakeSnapshot([knight]), now_ms=1500)
+    assert events == [MoveResolved("white", "N b1-c3", 1500)]
+
+
+def test_a_move_onto_a_captured_cell_is_written_with_an_x():
+    bus, events = _collecting_bus()
+    detector = SettlementDetector(bus, {"rook": "R", "pawn": "P"})
+    rook = piece("r", PieceKind.ROOK, Color.WHITE, 7, 0)       # a1
+    pawn = piece("p", PieceKind.PAWN, Color.BLACK, 4, 0)       # a4
+    detector.observe(FakeSnapshot([rook, pawn]), now_ms=0)
+    rook.cell = Position(4, 0)                                 # rook slides onto the pawn's cell
+    detector.observe(FakeSnapshot([rook]), now_ms=3000)       # pawn gone
+    assert CaptureResolved("black", "pawn") in events
+    assert MoveResolved("white", "R a1xa4", 3000) in events
 
 
 def test_a_vanished_piece_publishes_a_capture():
@@ -114,6 +140,18 @@ def test_a_vanished_piece_publishes_a_capture():
     detector.observe(FakeSnapshot([rook, pawn]))
     detector.observe(FakeSnapshot([rook]))                    # pawn taken off the board
     assert events == [CaptureResolved("black", "pawn")]
+
+
+def test_a_kind_change_publishes_a_promotion():
+    bus, events = _collecting_bus()
+    detector = SettlementDetector(bus, {"pawn": "P", "queen": "Q"})
+    pawn = piece("p", PieceKind.PAWN, Color.WHITE, 1, 3)       # d7
+    detector.observe(FakeSnapshot([pawn]), now_ms=0)
+    pawn.cell = Position(0, 3)                                 # -> d8
+    pawn.kind = PieceKind.QUEEN                                # promotes
+    detector.observe(FakeSnapshot([pawn]), now_ms=4000)
+    assert MoveResolved("white", "P d7-d8", 4000) in events
+    assert PromotionResolved("white", "queen") in events
 
 
 def test_the_first_observation_publishes_nothing():

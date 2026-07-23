@@ -42,6 +42,22 @@ def test_a_custom_config_does_not_disturb_the_default_one(tmp_path):
     assert config.load().cell_size == 100
 
 
+def test_a_piece_speed_is_read_when_given_and_none_otherwise(tmp_path):
+    custom = tmp_path / "custom.toml"
+    custom.write_text(
+        "[board]\ncell_size = 50\n"
+        "[timing]\nms_per_cell = 1000\njump_duration_ms = 750\n"
+        '[tokens]\nempty = "_"\n'
+        '[[pieces]]\nname = "drone"\nsymbol = "D"\nmovement = "leap"\n'
+        "offsets = [[2, 2]]\nms_per_cell = 3000\n"
+        '[[pieces]]\nname = "rook"\nsymbol = "R"\nmovement = "slide"\n'
+        "directions = [[0, 1]]\n"
+    )
+    cfg = config.load(custom)
+    speeds = {spec.name: spec.ms_per_cell for spec in cfg.pieces}
+    assert speeds == {"drone": 3000, "rook": None}
+
+
 def test_config_is_immutable():
     cfg = config.load()
     try:

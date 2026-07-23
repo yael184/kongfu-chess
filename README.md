@@ -23,8 +23,9 @@ pip install opencv-python             # only needed for the GUI
 ### Graphical (OpenCV) surface
 
 ```bash
-python -m kongfuchess.gui                 # loads the standard starting position
-python -m kongfuchess.gui my_board.txt    # or a board grid of your own
+python -m kongfuchess.gui                       # loads the standard starting position
+python -m kongfuchess.gui my_board.txt          # or a board grid of your own
+python -m kongfuchess.gui --white Alice --black Bob   # name the players for this game
 ```
 
 - **Left-click** selects a piece, then a destination. A second click on your own piece switches the
@@ -36,7 +37,10 @@ python -m kongfuchess.gui my_board.txt    # or a board grid of your own
   top down like an hourglass** until the piece is ready again.
 - Pieces **glide** between cells over their travel time and animate per state
   (idle / move / jump / short rest / long rest).
-- A **side panel** shows player names, a live score and the moves log.
+- A **side panel** shows each player's name and live score in their own column, the **score gap**
+  between them, and a **per-player moves log** — each move stamped with its server-time and written
+  with an `x` when it captured (e.g. `12.3s  R a1xa4`). Player names default to `[players]` in config
+  and can be overridden per game with `--white`/`--black`.
 - The **window is resizable** — clicks land on the right square at any zoom. <kbd>Esc</kbd> or the window's X button ends the game.
 
 The art lives under `kongfuchess/assets/` and is entirely config-driven
@@ -159,7 +163,7 @@ long_rest_ms = 2000      # cooldown after a move
 short_rest_ms = 500      # cooldown after a jump
 
 [players]
-white = "White"          # names shown on the side panel
+white = "White"          # default names on the side panel (override with --white / --black)
 black = "Black"
 
 [panel]
@@ -186,8 +190,10 @@ offsets = [[2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2
 
 Movement patterns: `slide` (travels along `directions` until blocked), `leap` (jumps to fixed
 `offsets`), `combined` (both), and `pawn`. Optional keys: `promotes_to = "<name>"`,
-`victory_on_capture = true`, and `flies_over = true` (exempt from collisions and allowed to capture a
-friendly piece, like the knight). Only a movement pattern that does not exist yet needs code — one
+`victory_on_capture = true`, `flies_over = true` (exempt from collisions and allowed to capture a
+friendly piece, like the knight), and `ms_per_cell = <int>` (this piece's own per-cell travel time —
+a slow "drone" that leaps but crawls — falling back to `[timing].ms_per_cell` when omitted). Only a
+movement pattern that does not exist yet needs code — one
 `PieceRule` subclass plus one entry in
 [rules/rule_factory.py](kongfuchess/rules/rule_factory.py), and nothing outside `rules/`. See
 [tests/integration/test_custom_game.py](tests/integration/test_custom_game.py) for whole games (an

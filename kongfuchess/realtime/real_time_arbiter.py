@@ -69,10 +69,14 @@ class RealTimeArbiter:
     """
 
     def __init__(self, rules, effect_applier, ms_per_cell, jump_duration_ms,
-                 long_rest_ms, short_rest_ms, collision_resolver=None):
+                 long_rest_ms, short_rest_ms, collision_resolver=None, speed_for=None):
         self._rules = rules
         self._applier = effect_applier
         self._ms_per_cell = ms_per_cell
+        # How long a given piece takes to cross one cell. Injected so per-piece speed (the drone)
+        # stays a timing fact the arbiter is handed, not a chess fact it computes: it never looks at
+        # what kind a piece is. Defaults to the single global speed for every piece.
+        self._speed_for = speed_for if speed_for is not None else (lambda piece: ms_per_cell)
         self._jump_duration_ms = jump_duration_ms
         self._long_rest_ms = long_rest_ms
         self._short_rest_ms = short_rest_ms
@@ -82,6 +86,12 @@ class RealTimeArbiter:
         self._phases = []                 # active jump/rest lifecycles (one per busy-resting piece)
         self._protected_until = {}        # piece -> absolute ms its cell stops being protected
         self._board = None
+
+    @property
+    def now_ms(self) -> int:
+        """The authoritative server clock, in ms. This is the time base a move is stamped with and
+        the one collisions are ordered by — a single source of 'now' for the whole game."""
+        return self._clock_ms
 
     def has_active_motion(self) -> bool:
         """Whether any motion is currently in flight. No longer a lock — many may run at once."""
@@ -108,7 +118,7 @@ class RealTimeArbiter:
     def start_motion(self, board, source, destination):
         """Begin a validated move. The piece is flagged MOVING but stays on its source cell."""
         piece = board.piece_at(source)
-        motion = Motion.start(piece, destination, self._clock_ms, self._ms_per_cell)
+        motion = Motion.start(piece, destination, self._clock_ms, self._speed_for(piece))
         piece.state = PieceState.MOVING
         self._board = board
         self._motions.append(motion)

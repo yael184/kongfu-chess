@@ -161,6 +161,12 @@ class GameEngine:
         """The cells whose piece is mid-jump right now, for a renderer to animate the dodge."""
         return self._arbiter.airborne_cells()
 
+    def game_time_ms(self):
+        """The authoritative server clock in ms, passed straight through from the arbiter. A move is
+        stamped with this so the panel can show when it happened; it is the same 'now' collisions are
+        ordered by. The engine reads it, it does not keep its own clock."""
+        return self._arbiter.now_ms
+
     def snapshot(self):
         """Return a read-only GameSnapshot of the current board and game-over flag."""
         return GameSnapshot(self._state.board.snapshot(), self._state.game_over)
