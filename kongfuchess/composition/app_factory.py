@@ -174,10 +174,8 @@ def build_gui_app(board, cfg, window_title, rules=None) -> GameLoop:
     controller = build_controller(engine, cfg)
 
     detector = panel = None
-    board_width_px = None
     if cfg.panel_width and cfg.panel_width > 0:
         detector, panel = build_scoreboard(cfg)
-        board_width_px = board.width * cfg.cell_size
 
     return GameLoop(engine, controller, build_board_view(cfg, panel), Cv2Renderer(window_title),
-                    settlement_detector=detector, board_width_px=board_width_px)
+                    settlement_detector=detector)

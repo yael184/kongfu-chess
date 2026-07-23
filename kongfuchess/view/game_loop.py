@@ -16,13 +16,12 @@ from kongfuchess.view.rendering.view_state import ViewState
 
 class GameLoop:
     def __init__(self, engine, controller, board_view, renderer,
-                 settlement_detector=None, board_width_px=None, clock=time.perf_counter):
+                 settlement_detector=None, clock=time.perf_counter):
         self._engine = engine
         self._controller = controller
         self._board_view = board_view
         self._renderer = renderer
         self._detector = settlement_detector
-        self._board_width_px = board_width_px   # clicks at or beyond this x are on the side panel
         self._clock = clock
 
     def run(self):
@@ -64,13 +63,8 @@ class GameLoop:
         for event in events:
             if event.kind == QUIT:
                 return True
-            if self._on_panel(event):
-                continue
             if event.kind == CLICK:
                 self._controller.handle_click(event.x, event.y)
             elif event.kind == JUMP:
                 self._controller.handle_jump(event.x, event.y)
         return False
-
-    def _on_panel(self, event) -> bool:
-        return self._board_width_px is not None and event.x >= self._board_width_px
